@@ -1,0 +1,17 @@
+#!/bin/sh
+
+arch_root=/mnt/usb2/archlinux/rootfs
+
+if [ ! -x "$arch_root/usr/bin/bash" ]; then
+  echo "Arch Linux ARM rootfs non disponibile."
+  exit 1
+fi
+
+echo "Arch Linux ARM sperimentale su Hisense MT5882"
+echo "Kernel MediaTek: $(uname -r) - supervisore hardware: Buildroot"
+echo "systemd non viene eseguito su questo kernel 3.10."
+
+exec chroot "$arch_root" /usr/bin/env -i \
+  HOME=/root USER=root LOGNAME=root TERM="${TERM:-xterm}" \
+  PATH=/usr/local/sbin:/usr/local/bin:/usr/bin \
+  /usr/bin/bash -l

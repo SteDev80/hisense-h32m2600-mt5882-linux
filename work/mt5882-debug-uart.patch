@@ -1,0 +1,41 @@
+diff --git a/arch/arm/mach-mt53xx/include/mach/debug-macro.S b/arch/arm/mach-mt53xx/include/mach/debug-macro.S
+index 743fc33..d709a0d 100644
+--- a/arch/arm/mach-mt53xx/include/mach/debug-macro.S
++++ b/arch/arm/mach-mt53xx/include/mach/debug-macro.S
+@@ -20,10 +20,9 @@
+ 
+ #include <mach/hardware.h>
+ 
+-        .macro  addruart,rx
+-        mrc p15, 0, \rx, c1, c0
+-        tst \rx, #1                 @ MMU enabled?
+-        moveq   \rx, #IO_PHYS       @ physical base address
+-        movne   \rx, #IO_BASE       @ virtual base
+-        add     \rx, \rx, #0xc0 << 8
++        .macro  addruart,rp,rv,tmp
++        mov     \rp, #IO_PHYS       @ physical base address
++        add     \rp, \rp, #0xc0 << 8
++        mov     \rv, #IO_BASE       @ virtual base address
++        add     \rv, \rv, #0xc0 << 8
+         .endm
+ 
+         .macro  senduart,rd,rx
+@@ -33,14 +32,12 @@
+         .endm
+ 
+         .macro  waituart,rd,rx
+-1001:   ldr \rd, [\rx, #0x4]    @ UART0 status
+-        tst \rd, 0x2            @ write allow
+-        bne 1001b
++1001:   ldr \rd, [\rx, #0x4c]   @ UART0 FIFO status
++        tst \rd, #0x1f00        @ free TX FIFO slots
++        beq 1001b
+         .endm
+ 
+         .macro  busyuart,rd,rx
+-1002:   ldr \rd, [\rx, #0xcc]   @ UART0 status
+-        tst \rd, 0x2            @ uart full .eq. busy
+-        beq 1002b
++        @ waituart before the next byte is sufficient
+         .endm
+ 

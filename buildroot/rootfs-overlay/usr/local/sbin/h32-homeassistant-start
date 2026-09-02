@@ -1,0 +1,34 @@
+#!/bin/sh
+
+arch_root=/mnt/usb2/archlinux/rootfs
+ha_config=/var/lib/homeassistant
+ha_log=/var/log/homeassistant.log
+ha_pid=/run/homeassistant.pid
+
+if [ ! -x "$arch_root/opt/homeassistant/bin/hass" ]; then
+    echo "Home Assistant: installation not found on USB"
+    exit 0
+fi
+
+if [ -s "$ha_pid" ] && kill -0 "$(cat "$ha_pid")" 2>/dev/null; then
+    echo "Home Assistant: already running (PID $(cat "$ha_pid"))"
+    exit 0
+fi
+
+mkdir -p "$arch_root$ha_config" "$arch_root/var/log"
+
+chroot "$arch_root" /usr/bin/env \
+    HOME="$ha_config" \
+    USER=root \
+    LOGNAME=root \
+    PATH=/opt/homeassistant/bin:/usr/bin \
+    TZ=Europe/Rome \
+    CC=/usr/bin/gcc \
+    CXX=/usr/bin/g++ \
+    MAKEFLAGS=-j2 \
+    /opt/homeassistant/bin/hass -c "$ha_config" \
+    >"$arch_root$ha_log" 2>&1 &
+
+echo $! >"$ha_pid"
+echo "Home Assistant: starting on http://192.168.1.50:8123 (PID $!)"
+

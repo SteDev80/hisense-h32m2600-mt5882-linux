@@ -1,0 +1,41 @@
+#!/bin/sh
+
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin
+exec </dev/console >/dev/console 2>&1
+
+mount -t devtmpfs devtmpfs /dev 2>/dev/null || true
+mount -t proc proc /proc 2>/dev/null || true
+mount -t sysfs sysfs /sys 2>/dev/null || true
+
+echo "H32Linux bootstrap: attendo USB ed eMMC..."
+mkdir -p /usb /internal /newroot
+
+i=0
+while [ "$i" -lt 20 ]; do
+  [ -b /dev/sda1 ] && [ -b /dev/mmcblk0p27 ] && break
+  sleep 1
+  i=$((i + 1))
+done
+
+mount -t vfat -o ro /dev/sda1 /usb || exec sh
+if ! grep -qx 'H32LINUX-MT5882-7642-V1' /usb/H32LINUX.KEY 2>/dev/null; then
+  echo "Chiave H32Linux assente o non valida; avvio interrotto."
+  exec sh
+fi
+
+mount -t ext4 -o rw /dev/mmcblk0p27 /internal || exec sh
+if [ ! -x /internal/h32linux/rootfs/sbin/init ]; then
+  echo "Rootfs persistente non trovato in p27."
+  exec sh
+fi
+
+mount --bind /internal/h32linux/rootfs /newroot || exec sh
+mkdir -p /newroot/dev /newroot/proc /newroot/sys /newroot/mnt/p27
+mount --move /dev /newroot/dev
+mount --move /proc /newroot/proc
+mount --move /sys /newroot/sys
+mount --bind /internal /newroot/mnt/p27
+
+echo "Chiave valida: avvio Linux persistente da eMMC p27."
+exec switch_root /newroot /sbin/init
+

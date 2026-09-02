@@ -1,0 +1,102 @@
+#!/bin/sh
+
+case "$1" in
+  start)
+    exec >/dev/ttyMT0 2>&1
+    echo
+    echo "=== MT5882 BUILDROOT RESCUE START ==="
+    uname -a
+    echo "cmdline: $(cat /proc/cmdline)"
+    echo "network devices:"
+    ls -l /sys/class/net 2>/dev/null || true
+    ifconfig -a 2>/dev/null || true
+
+    rescue_if=""
+    for path in /sys/class/net/*; do
+      [ -e "$path" ] || continue
+      iface="${path##*/}"
+      [ "$iface" = lo ] && continue
+      rescue_if="$iface"
+      break
+    done
+
+    if [ -n "$rescue_if" ]; then
+      ifconfig "$rescue_if" up 2>/dev/null || true
+      if udhcpc -i "$rescue_if" -n -q -t 5; then
+        rescue_ip="$(ifconfig "$rescue_if" | sed -n 's/.*inet addr:\([^ ]*\).*/\1/p')"
+        echo "rescue network: DHCP $rescue_if = $rescue_ip"
+      else
+        ifconfig "$rescue_if" 169.254.55.222 netmask 255.255.0.0 up 2>/dev/null || true
+        rescue_ip=169.254.55.222
+        echo "rescue network: fallback $rescue_if = 169.254.55.222/16"
+      fi
+      telnetd -p 23 -l /bin/sh 2>/dev/null && echo "telnet shell: $rescue_ip:23"
+      echo "VNC desktop: $rescue_ip:5900"
+      if rdate -s time.nist.gov 2>/dev/null; then
+        echo "clock synchronized: $(date)"
+      else
+        echo "clock synchronization unavailable"
+      fi
+    else
+      echo "rescue network: no non-loopback interface found"
+    fi
+
+    arch_root=/mnt/usb2/archlinux/rootfs
+    mkdir -p /mnt/usb2
+    if ! grep -q ' /mnt/usb2 ' /proc/mounts; then
+      mount -t ext4 -o rw /dev/sda2 /mnt/usb2 2>/dev/null || true
+    fi
+
+    if [ -x "$arch_root/usr/bin/bash" ]; then
+      mkdir -p "$arch_root/dev" "$arch_root/proc" "$arch_root/sys" "$arch_root/run"
+      grep -q " $arch_root/dev " /proc/mounts || mount --bind /dev "$arch_root/dev"
+      grep -q " $arch_root/proc " /proc/mounts || mount --bind /proc "$arch_root/proc"
+      grep -q " $arch_root/sys " /proc/mounts || mount --bind /sys "$arch_root/sys"
+      grep -q " $arch_root/run " /proc/mounts || mount --bind /run "$arch_root/run"
+      cp /etc/resolv.conf "$arch_root/etc/resolv.conf" 2>/dev/null || true
+      swapon /mnt/usb2/homeassistant.swap 2>/dev/null || true
+    fi
+
+    case " $(cat /proc/cmdline) " in
+      *" h32mode=arch "*)
+        if [ -x "$arch_root/usr/bin/bash" ]; then
+          mkdir -p /run/systemd/resolve
+          cp /etc/resolv.conf /run/systemd/resolve/stub-resolv.conf
+          telnetd -p 2323 -l /usr/local/sbin/h32-arch-login 2>/dev/null || true
+          DISPLAY=:0 xterm -geometry 100x30+40+40 \
+            -title 'Arch Linux ARM experimental' \
+            -e /usr/local/sbin/h32-arch-login >/var/log/arch-xterm.log 2>&1 &
+          echo "=== ARCH LINUX ARM EXPERIMENTAL MODE ==="
+          echo "Arch shell: VNC xterm or telnet $rescue_ip:2323"
+          echo "systemd is disabled; Buildroot supervises the MT5882 hardware"
+        else
+          echo "Arch mode requested, but USB rootfs was not found"
+        fi
+        ;;
+      *)
+        echo "=== BUILDROOT P27 MODE ==="
+        ;;
+    esac
+
+    if [ -x /usr/local/sbin/h32-homeassistant-start ]; then
+      /usr/local/sbin/h32-homeassistant-start
+    fi
+
+    echo "kernel config probe:"
+    if [ -r /proc/config.gz ]; then
+      sha256sum /proc/config.gz
+      zcat /proc/config.gz | grep -E '^(CONFIG_(USB|SCSI|BLK_DEV_SD|EXT4|IKCONFIG|MMC|MTD|NET|STAR|TUN|DEVTMPFS)=|# CONFIG_(USB|SCSI|BLK_DEV_SD|EXT4|IKCONFIG|MMC|MTD|NET|STAR|TUN|DEVTMPFS) is not set)' || true
+      echo "=== CONFIG_GZ_BASE64_BEGIN ==="
+      base64 /proc/config.gz
+      echo "=== CONFIG_GZ_BASE64_END ==="
+    else
+      echo "/proc/config.gz is not available"
+    fi
+
+    echo "loaded modules:"
+    cat /proc/modules 2>/dev/null || true
+    echo "=== MT5882 BUILDROOT RESCUE READY ==="
+    ;;
+esac
+
+exit 0

@@ -1,0 +1,36 @@
+# Generated images, archives, device dumps and captured logs
+/outputs/
+/usb-backup/
+*.img
+*.ext4
+*.cpio
+*.cpio.gz
+*.tar
+*.tar.gz
+*.tar.xz
+*.log
+
+# Third-party source trees are fetched separately
+/vendor/
+/work/mediatek-linux-3.10/
+
+# Build output and local IDE state
+**/bin/
+**/obj/
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Machine-specific generated files
+/work/lockfile
+/work/usb-mbr-result.txt
+/work/diskpart-lexar-mbr.txt
+
+# Optional local VNC configuration containing VNC_PASSWORD
+/buildroot/rootfs-overlay/etc/default/h32-vnc
+
+# OS metadata
+Thumbs.db
+Desktop.ini
+.DS_Store

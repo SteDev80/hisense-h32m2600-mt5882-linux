@@ -1,0 +1,15 @@
+[begin] (Hisense MT5882 Linux)
+  [exec] (Terminale) {xterm}
+  [exec] (Browser Dillo) {dillo}
+  [exec] (Browser Links) {xterm -e links}
+  [exec] (Lettore multimediale FFplay) {xterm -e sh -c 'echo "Uso: ffplay FILE oppure ffplay URL"; exec sh'}
+  [exec] (Editor Xedit) {xedit}
+  [exec] (Editor Nano) {xterm -e nano}
+  [exec] (Calcolatrice) {xcalc}
+  [exec] (Monitor Htop) {xterm -e htop}
+  [exec] (Carico CPU) {xload}
+  [exec] (Orologio) {xclock}
+  [separator]
+  [restart] (Riavvia Fluxbox)
+  [exit] (Chiudi desktop)
+[end]

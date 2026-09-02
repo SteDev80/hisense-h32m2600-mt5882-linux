@@ -1,0 +1,34 @@
+#!/bin/sh
+
+case "$1" in
+  start)
+    mkdir -p /run/vnc /root/.fluxbox
+    if [ -r /etc/default/h32-vnc ]; then
+      . /etc/default/h32-vnc
+    fi
+    if [ -z "${VNC_PASSWORD:-}" ]; then
+      VNC_PASSWORD="$(dd if=/dev/urandom bs=32 count=1 2>/dev/null | base64 | tr -dc 'A-Za-z0-9' | cut -c1-8)"
+    fi
+    x11vnc -storepasswd "$VNC_PASSWORD" /run/vnc/passwd >/dev/null
+    echo "VNC password for this boot: $VNC_PASSWORD"
+
+    Xvfb :0 -screen 0 1024x768x16 -nolisten tcp -noreset \
+      >/var/log/Xvfb.log 2>&1 &
+    sleep 2
+
+    DISPLAY=:0 fluxbox >/var/log/fluxbox.log 2>&1 &
+    DISPLAY=:0 xterm -geometry 100x30+20+20 \
+      -title 'Hisense MT5882 Buildroot' >/var/log/xterm.log 2>&1 &
+    DISPLAY=:0 /usr/local/bin/h32-start-button \
+      >/var/log/h32-start-button.log 2>&1 &
+
+    x11vnc -display :0 -rfbauth /run/vnc/passwd -rfbport 5900 \
+      -forever -shared -noxdamage -bg -o /var/log/x11vnc.log
+    echo "VNC virtual desktop started on port 5900"
+    ;;
+  stop)
+    killall h32-start-button x11vnc xterm fluxbox Xvfb 2>/dev/null || true
+    ;;
+esac
+
+exit 0

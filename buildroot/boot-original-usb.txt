@@ -1,0 +1,9 @@
+usb start
+usb start
+fatls usb 0:1 /
+setenv bootargs 'console=ttyMT0,115200n1 earlyprintk loglevel=8 root=/dev/sda2 rootwait rootfstype=ext4 ro init=/sbin/init'
+eboot.lzo kernelA
+
+# NON eseguire saveenv.
+# Se eboot.lzo richiede un secondo argomento, fermarsi e lanciare:
+# help eboot.lzo
