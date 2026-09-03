@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+arch=/mnt/usb2/archlinux/rootfs
+test -x "$arch/usr/bin/python3" || exit 1
+mkdir -p "$arch/tmp/.X11-unix"
+grep -q " $arch/tmp/.X11-unix " /proc/mounts || mount --bind /tmp/.X11-unix "$arch/tmp/.X11-unix"
+# Keep name resolution available inside the chroot.
+mkdir -p /run/systemd/resolve
+cp /etc/resolv.conf /run/systemd/resolve/stub-resolv.conf
+cp /etc/resolv.conf "$arch/etc/resolv.conf"
+chroot "$arch" /usr/bin/python3 -c 'import tkinter' || exit 1
+killall h32-start-button 2>/dev/null || true
+DISPLAY=:0 fluxbox-remote 'SetStyle /usr/share/fluxbox/styles/H32' || true
+exec chroot "$arch" /usr/bin/env DISPLAY=:0 HOME=/root PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+    /usr/bin/python3 /usr/local/bin/h32-desktop.py "$@"

@@ -1,0 +1,30 @@
+#!/bin/bash
+set -u
+case "${1:-}" in
+  pcmanfm|mousepad|galculator|xarchiver|geany|htop|nano|mpv) package=$1 ;;
+  *) echo 'Pacchetto non presente nel catalogo.'; exit 1 ;;
+esac
+echo "Installazione USB: $package"
+echo 'Il kernel della TV e sperimentale: non tutte le applicazioni funzioneranno.'
+echo 'Non viene eseguito un aggiornamento completo del sistema.'
+echo
+cp /proc/1/root/etc/resolv.conf /etc/resolv.conf
+if [ "$(date +%Y)" -lt 2026 ]; then
+    echo 'Sincronizzazione orologio in corso...'
+    chroot /proc/1/root /bin/busybox timeout 15 rdate -s time.nist.gov || true
+fi
+if [ "$(date +%Y)" -lt 2026 ]; then
+    echo 'Orologio non sincronizzato. Correggi data e ora prima di installare.'
+    read -r -p 'Premi Invio per chiudere.' answer
+    exit 1
+fi
+pacman -S --needed "$package"
+result=$?
+echo
+if [ "$result" = 0 ]; then
+    echo 'Operazione completata. Premi Aggiorna elenco nella finestra Programmi.'
+else
+    echo "Installazione non completata (codice $result). Non ignorare errori di firma o dipendenze."
+fi
+read -r -p 'Premi Invio per chiudere.' answer
+exit "$result"

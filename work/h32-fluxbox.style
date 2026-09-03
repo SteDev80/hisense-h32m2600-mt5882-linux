@@ -1,0 +1,35 @@
+! Lightweight flat theme for the USB desktop
+window.font: sans-10
+window.title.height: 27
+window.title.focus: Flat Solid
+window.title.focus.color: #21344f
+window.title.unfocus: Flat Solid
+window.title.unfocus.color: #132239
+window.label.focus: Flat Solid
+window.label.focus.color: #21344f
+window.label.focus.textColor: #edf4ff
+window.label.unfocus: Flat Solid
+window.label.unfocus.color: #132239
+window.label.unfocus.textColor: #9cb2cf
+window.button.focus: Flat Solid
+window.button.focus.color: #21344f
+window.button.focus.picColor: #4dd7bb
+window.button.unfocus: Flat Solid
+window.button.unfocus.color: #132239
+window.button.unfocus.picColor: #9cb2cf
+window.button.pressed: Flat Solid
+window.button.pressed.color: #345474
+window.handleWidth: 3
+window.borderWidth: 1
+window.borderColor: #345474
+menu.frame: Flat Solid
+menu.frame.color: #132239
+menu.frame.textColor: #edf4ff
+menu.title: Flat Solid
+menu.title.color: #21344f
+menu.title.textColor: #4dd7bb
+menu.hilite: Flat Solid
+menu.hilite.color: #345474
+menu.hilite.textColor: #ffffff
+toolbar: Flat Solid
+toolbar.color: #132239

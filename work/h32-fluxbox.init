@@ -1,0 +1,5 @@
+session.styleFile: /usr/share/fluxbox/styles/H32
+session.menuFile: /root/.fluxbox/menu
+session.screen0.allowRemoteActions: true
+session.screen0.toolbar.visible: false
+session.screen0.workspaces: 1
