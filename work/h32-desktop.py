@@ -206,7 +206,11 @@ class Desktop:
         if not path:
             return
         # This is a host player: map the selected chroot filename to the USB.
-        terminal('Lettore video · q per uscire', ['/usr/bin/env', 'SDL_RENDER_DRIVER=software', '/usr/bin/ffplay', '-nostats', '-loglevel', 'error', '-autoexit', '-x', '800', '-y', '450', '-i', ARCH + path])
+        # SDL initializes audio even for silent videos; no ALSA device exists
+        # on this vendor-kernel setup. Dummy audio keeps video playback usable.
+        if Path(path).suffix.lower() in ('.mp3', '.wav', '.ogg', '.flac'):
+            messagebox.showinfo('Audio non disponibile', 'Il file verrà aperto, ma non si sentirà: Linux non rileva una scheda audio e VNC non trasporta audio.', parent=self.root)
+        terminal('Lettore · q per uscire', ['/usr/bin/env', 'SDL_RENDER_DRIVER=software', 'SDL_AUDIODRIVER=dummy', '/usr/bin/ffplay', '-nostats', '-loglevel', 'error', '-autoexit', '-x', '800', '-y', '450', '-i', ARCH + path])
 
     def files(self):
         win = self.window('File manager · USB', '730x560')

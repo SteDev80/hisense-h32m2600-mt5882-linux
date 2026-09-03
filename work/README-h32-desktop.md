@@ -48,6 +48,16 @@ cache con verifica della firma: `pacman -Dk` non segnala errori e `pacman -Qk
 alsa-lib` non segnala file mancanti. MPV non risulta installato.
 FFplay è stato verificato con un breve AVI MPEG-4 generato localmente e rendering
 software (uscita regolare, codice 0). Non sono garantiti tutti i codec o l'audio.
+Il test iniziale usava `-an`: l'avvio normale inizializzava invece SDL audio e
+falliva con `dsp: No such audio device`, anche su video muti. Il launcher ora
+imposta `SDL_AUDIODRIVER=dummy`; lo stesso comando con il video di dieci secondi
+è stato verificato senza `-an` (codice 0). Nessun audio viene emesso dalla TV.
+
+File di prova sulla USB: `/root/Video/Prova-TV-10-secondi.avi` e
+`/root/Musica/Prova-audio-10-secondi.mp3` (breve melodia sintetica).
+Il generatore MP3 locale `create-test-mp3.py` richiede `lameenc` installato in
+`outputs/audio-generator-deps`; `upload-test-mp3.ps1` lo trasferisce via TTL
+con verifica SHA-256, senza sovrascrivere un file esistente.
 
 Per disabilitare solo il nuovo desktop al prossimo avvio, togliere il permesso
 eseguibile a `/etc/init.d/S99zzdesktop`. Il servizio VNC originale resta separato.
