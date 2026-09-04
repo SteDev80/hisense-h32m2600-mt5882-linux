@@ -1,0 +1,13 @@
+#!/bin/sh
+
+arch_root=/mnt/usb2/archlinux/rootfs
+vendor_wpa=/mnt/usb2/h32-wpa-original
+vendor_loader="$vendor_wpa/lib/ld-linux.so.3"
+vendor_libs="$vendor_wpa/lib:$vendor_wpa/basic-lib:$vendor_wpa/bin"
+echo "=== INTERFACCIA ==="
+ifconfig wlan0 2>&1 || exit 1
+echo "=== COLLEGAMENTO ==="
+if [ -x "$vendor_loader" ] && [ -x "$vendor_wpa/bin/wpa_cli" ]; then
+    "$vendor_loader" --library-path "$vendor_libs" "$vendor_wpa/bin/wpa_cli" -i wlan0 status 2>&1 | \
+        grep -E '^(ssid|bssid|wpa_state|ip_address|address)=' || true
+fi

@@ -1,0 +1,28 @@
+#!/bin/sh
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin
+exec </dev/console >/dev/console 2>&1
+mount -t devtmpfs devtmpfs /dev 2>/dev/null || true
+mount -t proc proc /proc 2>/dev/null || true
+mount -t sysfs sysfs /sys 2>/dev/null || true
+mkdir -p /usb /external /newroot
+echo 'H32 USB vendor bootstrap: waiting for Lexar (no eMMC mount)'
+i=0
+while [ "$i" -lt 30 ]; do
+    [ -b /dev/sda1 ] && [ -b /dev/sda2 ] && break
+    sleep 1
+    i=$((i + 1))
+done
+mount -t vfat -o ro /dev/sda1 /usb || exec sh
+grep -qx 'H32LINUX-MT5882-7642-V1' /usb/H32LINUX.KEY || exec sh
+grep -q Lexar /sys/block/sda/device/vendor || exec sh
+mount -t ext4 -o rw /dev/sda2 /external || exec sh
+test -x /external/h32linux-vendor-v1/rootfs/sbin/init || exec sh
+mount --bind /external/h32linux-vendor-v1/rootfs /newroot || exec sh
+mkdir -p /newroot/dev /newroot/proc /newroot/sys /newroot/mnt/usb2 /newroot/mnt/usbboot
+mount --move /dev /newroot/dev || exec sh
+mount --move /proc /newroot/proc || exec sh
+mount --move /sys /newroot/sys || exec sh
+mount --bind /external /newroot/mnt/usb2 || exec sh
+mount --move /usb /newroot/mnt/usbboot || exec sh
+echo '=== H32 USB VENDOR ROOT ==='
+exec switch_root /newroot /sbin/init

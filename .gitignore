@@ -36,3 +36,11 @@ Desktop.ini
 .DS_Store
 __pycache__/
 *.pyc
+
+# Device-private material (never publish even to the private repository)
+*.ko
+*.pem
+*.key
+*credential*.xml
+wpa_supplicant-h32.conf
+*.env

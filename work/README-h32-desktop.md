@@ -1,5 +1,15 @@
 # Desktop H32 sulla USB
 
+## Aggiornamento 4 settembre 2026
+
+Audio TV ora attivo tramite `h32-media-play` e runtime SDL/ALSA dedicato:
+vedi [audio permanente](README-audio-permanente-usb.md). La descrizione
+`SDL_AUDIODRIVER=dummy` in fondo è storia dei primi test, non lo stato attuale.
+Desktop, menu e catalogo aggiornati sono nella [guida](../docs/GUIDA-ITALIANA.md).
+Lo sfondo accetta `/usr/local/share/h32-desktop/portrait.jpg` nel chroot Arch.
+Il lettore può fallire sui link assoluti: per i file condivisi usare
+`/srv/condivisa` invece di `/root/Condivisa`.
+
 Installato il 3 settembre 2026 sul sistema USB Buildroot con Arch ARM in chroot.
 Non modifica eMMC, firmware Hisense o ambiente U-Boot.
 
@@ -46,6 +56,8 @@ Il successivo tentativo di installazione ha aggiunto PCManFM, ma un riavvio ha
 interrotto l'installazione di alsa-lib. La libreria è stata reinstallata dalla
 cache con verifica della firma: `pacman -Dk` non segnala errori e `pacman -Qk
 alsa-lib` non segnala file mancanti. MPV non risulta installato.
+### Storico del 3 settembre, superato dall'integrazione audio
+
 FFplay è stato verificato con un breve AVI MPEG-4 generato localmente e rendering
 software (uscita regolare, codice 0). Non sono garantiti tutti i codec o l'audio.
 Il test iniziale usava `-an`: l'avvio normale inizializzava invece SDL audio e

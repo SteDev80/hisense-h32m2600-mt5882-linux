@@ -1,0 +1,86 @@
+#!/bin/sh
+set -eu
+
+arch_root=/mnt/usb2/archlinux/rootfs
+config="$arch_root/etc/wpa_supplicant-h32.conf"
+pidfile=/run/wpa_supplicant-h32.pid
+vendor_wpa=/mnt/usb2/h32-wpa-original
+vendor_loader="$vendor_wpa/lib/ld-linux.so.3"
+vendor_libs="$vendor_wpa/lib:$vendor_wpa/basic-lib:$vendor_wpa/bin"
+
+run_vendor() {
+    program="$1"
+    shift
+    "$vendor_loader" --library-path "$vendor_libs" "$vendor_wpa/bin/$program" "$@"
+}
+
+[ -d /sys/class/net/wlan0 ] || {
+    echo "wlan0 non disponibile: controlla il modulo MT7603U."
+    exit 1
+}
+[ -x "$vendor_loader" ] && [ -x "$vendor_wpa/bin/wpa_supplicant" ] || {
+    echo "Gestore WPA originale Hisense non installato sulla USB."
+    exit 1
+}
+[ -r "$config" ] || {
+    echo "Configurazione Wi-Fi assente. Esegui: h32-wifi-setup"
+    exit 1
+}
+
+ifconfig wlan0 up
+
+if [ -s "$pidfile" ]; then
+    oldpid="$(cat "$pidfile")"
+    case "$oldpid" in
+        *[!0-9]*|'') ;;
+        *) kill "$oldpid" 2>/dev/null || true ;;
+    esac
+    rm -f "$pidfile"
+    sleep 1
+fi
+
+rm -rf /run/wpa_supplicant
+mkdir -p /run/wpa_supplicant
+if ! run_vendor wpa_supplicant \
+    -B -D nl80211 -i wlan0 -c "$config" \
+    -P "$pidfile" >"$vendor_wpa/wpa_supplicant-h32.log" 2>&1; then
+    echo "Avvio del gestore WPA Hisense non riuscito."
+    cat "$vendor_wpa/wpa_supplicant-h32.log" 2>/dev/null || true
+    ifconfig wlan0 down 2>/dev/null || true
+    exit 1
+fi
+
+echo "Connessione Wi-Fi in corso..."
+state=
+count=0
+while [ "$count" -lt 30 ]; do
+    state="$(run_vendor wpa_cli -i wlan0 status 2>/dev/null || true)"
+    if echo "$state" | grep -q '^wpa_state=COMPLETED$'; then
+        echo "$state" | grep -E '^(ssid|bssid|wpa_state)=' || true
+        if udhcpc -i wlan0 -n -q -t 5; then
+            wifi_ip="$(ifconfig wlan0 | sed -n 's/.*inet addr:\([^ ]*\).*/\1/p')"
+            echo "Wi-Fi attivo: wlan0 = $wifi_ip"
+            exit 0
+        fi
+        echo "Associato al router, ma DHCP non ha assegnato un indirizzo."
+        exit 1
+    fi
+    sleep 1
+    count=$((count + 1))
+done
+
+echo "Connessione non riuscita. Stato finale:"
+echo "$state" | grep -E '^(ssid|bssid|wpa_state)=' || true
+echo "Log: $vendor_wpa/wpa_supplicant-h32.log"
+# The recovered 2017 vendor driver has a broken cfg80211 rescan path.  Never
+# leave wpa_supplicant retrying indefinitely after a failed association.
+if [ -s "$pidfile" ]; then
+    failed_pid="$(cat "$pidfile")"
+    case "$failed_pid" in
+        *[!0-9]*|'') ;;
+        *) kill "$failed_pid" 2>/dev/null || true ;;
+    esac
+fi
+rm -f "$pidfile"
+ifconfig wlan0 down 2>/dev/null || true
+exit 1

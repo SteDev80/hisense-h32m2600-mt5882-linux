@@ -107,9 +107,27 @@ class Desktop:
             c.create_text(80, y+22, text=title, anchor='w', fill=TEXT, font=('DejaVu Sans', 12, 'bold'), tags=tag)
             c.create_text(80, y+49, text=subtitle, anchor='w', fill=MUTED, font=('DejaVu Sans', 9), tags=tag)
             c.tag_bind(tag, '<Button-1>', lambda e, fn=callback: fn())
+        # Decode the supplied JPEG for display; keep the original asset intact.
+        portrait = Path('/usr/local/share/h32-desktop/portrait.jpg')
+        if portrait.is_file():
+            try:
+                side = min(300, int(w * .27), h - 180)
+                if not hasattr(self, 'portrait_image'):
+                    png = subprocess.check_output(host(
+                        '/usr/bin/ffmpeg', '-v', 'error', '-i', ARCH + str(portrait),
+                        '-vf', f'scale={side}:{side}:force_original_aspect_ratio=decrease',
+                        '-frames:v', '1', '-f', 'image2pipe', '-vcodec', 'png', 'pipe:1'), timeout=15)
+                    self.portrait_image = tk.PhotoImage(data=png)
+                x, y = w - 20, h - 74
+                c.create_rectangle(x-self.portrait_image.width()-2,
+                                   y-self.portrait_image.height()-2, x+2, y+2,
+                                   fill='#20170e', outline='#896438')
+                c.create_image(x, y, anchor='se', image=self.portrait_image)
+            except (OSError, subprocess.SubprocessError, tk.TclError) as exc:
+                print('Portrait unavailable:', exc, file=sys.stderr)
 
     def tick(self):
-        self.clock.configure(text=datetime.datetime.now().strftime('%d/%m  %H:%M'))
+        self.clock.configure(text=datetime.datetime.now().strftime('%d/%m/%Y  %H:%M'))
         self.root.after(1000, self.tick)
 
     def window(self, title, size='650x480'):
@@ -206,11 +224,7 @@ class Desktop:
         if not path:
             return
         # This is a host player: map the selected chroot filename to the USB.
-        # SDL initializes audio even for silent videos; no ALSA device exists
-        # on this vendor-kernel setup. Dummy audio keeps video playback usable.
-        if Path(path).suffix.lower() in ('.mp3', '.wav', '.ogg', '.flac'):
-            messagebox.showinfo('Audio non disponibile', 'Il file verrà aperto, ma non si sentirà: Linux non rileva una scheda audio e VNC non trasporta audio.', parent=self.root)
-        terminal('Lettore · q per uscire', ['/usr/bin/env', 'SDL_RENDER_DRIVER=software', 'SDL_AUDIODRIVER=dummy', '/usr/bin/ffplay', '-nostats', '-loglevel', 'error', '-autoexit', '-x', '800', '-y', '450', '-i', ARCH + path])
+        terminal('Lettore · audio TV · q per uscire', ['/usr/local/bin/h32-media-play', '-i', ARCH + path])
 
     def files(self):
         win = self.window('File manager · USB', '730x560')

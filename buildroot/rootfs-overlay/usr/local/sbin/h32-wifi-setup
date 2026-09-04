@@ -1,0 +1,47 @@
+#!/bin/sh
+set -eu
+
+arch_root=/mnt/usb2/archlinux/rootfs
+config="$arch_root/etc/wpa_supplicant-h32.conf"
+temporary="$config.tmp.$$"
+
+[ -t 0 ] || {
+    echo "Avvia questo comando da un terminale interattivo TTL, telnet o VNC."
+    exit 1
+}
+[ -x "$arch_root/usr/bin/wpa_passphrase" ] || {
+    echo "wpa_passphrase non installato nell'ambiente Arch USB."
+    exit 1
+}
+
+printf 'Nome rete Wi-Fi (SSID): '
+IFS= read -r ssid
+[ -n "$ssid" ] || { echo "SSID vuoto."; exit 1; }
+
+printf 'Password Wi-Fi (non verra mostrata): '
+stty -echo
+trap 'stty echo 2>/dev/null || true; rm -f "$temporary"' EXIT HUP INT TERM
+IFS= read -r passphrase
+stty echo
+printf '\n'
+
+length=${#passphrase}
+if [ "$length" -lt 8 ] || [ "$length" -gt 63 ]; then
+    echo "La password WPA/WPA2 deve contenere da 8 a 63 caratteri."
+    exit 1
+fi
+
+umask 077
+{
+    echo 'ctrl_interface=/run/wpa_supplicant'
+    printf '%s\n' "$passphrase" | \
+        chroot "$arch_root" /usr/bin/wpa_passphrase "$ssid" | \
+        sed '/^[[:space:]]*#psk=/d'
+} > "$temporary"
+unset passphrase
+mv "$temporary" "$config"
+chmod 600 "$config"
+trap - EXIT HUP INT TERM
+
+echo "Credenziali salvate sulla sola chiavetta USB."
+exec /usr/local/sbin/h32-wifi-connect

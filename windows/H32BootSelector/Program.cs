@@ -34,6 +34,7 @@ internal sealed class BootSelectorForm : Form
     private readonly Button _buildroot = new() { Text = "Avvia Buildroot (p27)", Width = 245, Height = 56 };
     private readonly Button _arch = new() { Text = "Avvia Arch sperimentale (USB)", Width = 245, Height = 56 };
     private readonly Label _status = new() { Text = "TV spenta: scegli il sistema, poi accendila.", AutoSize = true };
+    private readonly CheckBox _usbVendor = new() { Text = "Variante USB con driver recuperati (p27 non montata)", AutoSize = true };
     private readonly TextBox _log = new()
     {
         Multiline = true,
@@ -87,6 +88,7 @@ internal sealed class BootSelectorForm : Form
         top.Controls.Add(note);
         top.Controls.Add(portRow);
         top.Controls.Add(buttons);
+        top.Controls.Add(_usbVendor);
         top.Controls.Add(_status);
 
         Controls.Add(_log);
@@ -95,6 +97,10 @@ internal sealed class BootSelectorForm : Form
         _refresh.Click += (_, _) => RefreshPorts();
         _buildroot.Click += async (_, _) => await BootAsync("buildroot");
         _arch.Click += async (_, _) => await BootAsync("arch");
+        _usbVendor.CheckedChanged += (_, _) =>
+        {
+            _buildroot.Text = _usbVendor.Checked ? "Avvia Buildroot USB + driver" : "Avvia Buildroot (p27)";
+        };
         FormClosing += (_, _) => _serial?.Dispose();
         Shown += (_, _) => RefreshPorts();
     }
@@ -148,13 +154,16 @@ internal sealed class BootSelectorForm : Form
             var kernel = await RunUbootAsync($"fatload usb 0:1 {KernelAddress} {KernelFile}", TimeSpan.FromMinutes(2));
             Require(kernel.Contains("5027136 bytes read"), "Kernel caricato in modo incompleto.");
 
-            var initrd = await RunUbootAsync($"fatload usb 0:1 {InitrdAddress} {BootstrapFile}", TimeSpan.FromMinutes(2));
-            Require(initrd.Contains("1975736 bytes read"), "Bootstrap caricato in modo incompleto.");
+            var bootstrap = _usbVendor.Checked ? "uInitrd-h32m2600-usb-vendor-v1" : BootstrapFile;
+            var bootstrapSize = _usbVendor.Checked ? 1977369 : 1975736;
+            var initrd = await RunUbootAsync($"fatload usb 0:1 {InitrdAddress} {bootstrap}", TimeSpan.FromMinutes(2));
+            Require(initrd.Contains($"{bootstrapSize} bytes read"), "Bootstrap caricato in modo incompleto.");
 
             Require((await RunUbootAsync($"iminfo {KernelAddress}", TimeSpan.FromSeconds(45))).Contains("Verifying Checksum ... OK"), "CRC kernel non valido.");
             Require((await RunUbootAsync($"iminfo {InitrdAddress}", TimeSpan.FromSeconds(45))).Contains("Verifying Checksum ... OK"), "CRC bootstrap non valido.");
 
             var bootArgs = $"{BaseBootArgs} h32mode={mode}";
+            if (_usbVendor.Checked) bootArgs += " h32root=usb h32vendor=1";
             await RunUbootAsync("setenv bootargs " + bootArgs, TimeSpan.FromSeconds(30));
             var env = await RunUbootAsync("printenv bootargs", TimeSpan.FromSeconds(30));
             Require(env.Contains($"h32mode={mode}"), "Modalità scelta non presente nei bootargs.");
@@ -162,6 +171,7 @@ internal sealed class BootSelectorForm : Form
             SetStatus($"Avvio {ModeName(mode)}...");
             WriteSerial($"bootm {KernelAddress} {InitrdAddress}\r");
             var expected = mode == "arch" ? "=== ARCH LINUX ARM EXPERIMENTAL MODE ===" : "=== BUILDROOT P27 MODE ===";
+            if (_usbVendor.Checked && mode == "buildroot") expected = "=== BUILDROOT USB VENDOR MODE ===";
             var bootLog = await ReadUntilAsync(text => text.Contains(expected) && text.Contains("=== MT5882 BUILDROOT RESCUE READY ==="), TimeSpan.FromMinutes(8));
             Require(bootLog.Contains(expected), "Il sistema non ha confermato la modalità richiesta.");
 
@@ -257,9 +267,12 @@ internal sealed class BootSelectorForm : Form
         _arch.Enabled = !busy;
         _refresh.Enabled = !busy;
         _ports.Enabled = !busy;
+        _usbVendor.Enabled = !busy;
     }
 
-    private static string ModeName(string mode) => mode == "arch" ? "Arch Linux ARM sperimentale" : "Buildroot su p27";
+    private string ModeName(string mode) => mode == "arch"
+        ? (_usbVendor.Checked ? "Arch Linux ARM su USB con driver" : "Arch Linux ARM sperimentale")
+        : (_usbVendor.Checked ? "Buildroot USB con driver" : "Buildroot su p27");
     private static void Require(bool condition, string message)
     {
         if (!condition) throw new InvalidOperationException(message);

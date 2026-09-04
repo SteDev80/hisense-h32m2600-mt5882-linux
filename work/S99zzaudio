@@ -1,0 +1,7 @@
+#!/bin/sh
+# Run after S99mt5882 has mounted the Arch chroot devices.
+case "$1" in
+ start) /usr/local/sbin/h32-audio-start >/var/log/h32-audio.log 2>&1 || echo 'H32 audio unavailable; see /var/log/h32-audio.log' ;;
+ stop) : ;; # The proprietary module is permanent; never force-unload it.
+esac
+exit 0

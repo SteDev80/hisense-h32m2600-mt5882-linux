@@ -1,0 +1,36 @@
+#!/bin/sh
+# Notification only: failure must not prevent startup.
+export DISPLAY=:0
+arch=/mnt/usb2/archlinux/rootfs
+log=/var/log/h32-ready-sound.log
+test ! -e /mnt/usb2/H32-STARTUP-SOUND-DISABLED || exit 0
+awk '$1=="/dev/sda2" && $2=="/" {ok=1} END{exit !ok}' /proc/mounts || exit 1
+boot_id=$(cat /proc/sys/kernel/random/boot_id) || exit 1
+# mkdir is atomic and this identifier changes on every kernel boot.
+mkdir "/run/h32-ready-$boot_id" 2>/dev/null || exit 0
+exec >"$log" 2>&1
+echo "Waiting for audio, desktop, LAN, VNC and SMB; boot=$boot_id"
+n=0
+while test "$n" -lt 90; do
+    if grep -q H32_AUDIO_READY /var/log/h32-audio.log &&
+       grep -q mtk /proc/asound/cards &&
+       ip -4 addr show | grep -q 'inet 192\.168\.1\.' &&
+       chroot "$arch" /usr/bin/pgrep -f '^/usr/bin/python3 /usr/local/bin/h32-desktop.py$' >/dev/null &&
+       chroot "$arch" /usr/bin/timeout 8 /usr/bin/python3 /usr/local/bin/h32-ready-check.py; then
+        # Avoid interrupting any playback already started by the user.
+        if chroot "$arch" /usr/bin/pgrep -x ffplay >/dev/null; then
+            echo 'H32_READY_SOUND_SKIPPED: media already playing'
+            exit 0
+        fi
+        if chroot "$arch" /usr/bin/timeout 10 /usr/bin/chroot /proc/1/root /usr/local/bin/h32-media-play -nodisp /opt/h32-audio/ready.wav; then
+            echo 'H32_READY_SOUND_PLAYED'
+            exit 0
+        fi
+        echo 'H32_READY_SOUND_FAILED: playback failed'
+        exit 1
+    fi
+    n=$((n+1))
+    sleep 2
+done
+echo 'H32_READY_SOUND_TIMEOUT: required services not ready; no success sound'
+exit 1

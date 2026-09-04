@@ -1,0 +1,10 @@
+#!/bin/sh
+case "$1" in
+  start)
+    /usr/local/sbin/h32-vendor-wifi >/run/h32-vendor-wifi.log 2>&1
+    result=$?
+    cat /run/h32-vendor-wifi.log
+    if [ "$result" -ne 0 ]; then echo 'Vendor Wi-Fi unavailable; Ethernet boot continues.'; fi
+    ;;
+esac
+exit 0

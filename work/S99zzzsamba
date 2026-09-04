@@ -1,0 +1,30 @@
+#!/bin/sh
+set -eu
+arch=/mnt/usb2/archlinux/rootfs
+case "${1:-start}" in
+ start)
+    awk '$1=="/dev/sda2" && $2=="/" {ok=1} END{exit !ok}' /proc/mounts
+    test -d /mnt/usb2/Condivisa
+    test -d "$arch/srv/condivisa"
+    grep -q " $arch/srv/condivisa " /proc/mounts || mount --bind /mnt/usb2/Condivisa "$arch/srv/condivisa"
+    chroot "$arch" /usr/bin/install -d -m 0755 /run/samba /var/log/samba
+    # Wi-Fi setup is asynchronous: wait for a LAN address before binding smbd.
+    tries=0
+    until ip -4 addr show | grep -q 'inet 192\.168\.1\.'; do
+        tries=$((tries + 1))
+        if test "$tries" -ge 90; then echo 'Samba: LAN address unavailable' >/var/log/h32-samba.log; exit 1; fi
+        sleep 1
+    done
+    if test -f "$arch/run/smbd.pid"; then
+        pid=$(cat "$arch/run/smbd.pid")
+        if test -r "/proc/$pid/comm" && grep -qx smbd "/proc/$pid/comm"; then exit 0; fi
+    fi
+    chroot "$arch" /usr/bin/testparm -s /etc/samba/smb.conf >/var/log/h32-samba.log 2>&1
+    chroot "$arch" /usr/bin/smbd -D -s /etc/samba/smb.conf >>/var/log/h32-samba.log 2>&1
+    ;;
+ stop)
+    if test -f "$arch/run/smbd.pid"; then
+        chroot "$arch" /usr/bin/smbcontrol all shutdown
+    fi
+    ;;
+esac

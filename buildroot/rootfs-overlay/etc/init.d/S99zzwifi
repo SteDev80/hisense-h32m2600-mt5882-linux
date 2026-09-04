@@ -1,0 +1,24 @@
+#!/bin/sh
+
+case "$1" in
+  start)
+    config=/mnt/usb2/archlinux/rootfs/etc/wpa_supplicant-h32.conf
+    original_wpa=/mnt/usb2/h32-wpa-original/bin/wpa_supplicant
+    if [ -r "$config" ] && [ -x "$original_wpa" ] && [ -x /usr/local/sbin/h32-wifi-connect ]; then
+      # h32-wifi-connect uses the matching Hisense 2.3 supplicant and stops
+      # after 30 seconds on failure, avoiding the unbounded rescan crash.
+      /usr/local/sbin/h32-wifi-connect >/var/log/h32-wifi.log 2>&1 &
+    fi
+    ;;
+  stop)
+    if [ -s /run/wpa_supplicant-h32.pid ]; then
+      pid="$(cat /run/wpa_supplicant-h32.pid)"
+      case "$pid" in
+        *[!0-9]*|'') ;;
+        *) kill "$pid" 2>/dev/null || true ;;
+      esac
+    fi
+    ;;
+esac
+
+exit 0

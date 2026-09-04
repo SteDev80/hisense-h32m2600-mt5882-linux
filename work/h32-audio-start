@@ -1,0 +1,23 @@
+#!/bin/sh
+set -eu
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+test ! -e /mnt/usb2/H32-AUDIO-DISABLED || exit 0
+test "$(uname -r)" = 3.10.27
+awk '$1=="/dev/sda2" && $2=="/" {ok=1} END{exit !ok}' /proc/mounts
+if grep -q /dev/mmc /proc/mounts; then echo 'Refusing audio: eMMC mounted'; exit 1; fi
+arch=/mnt/usb2/archlinux/rootfs
+for d in /dev/mmcblk0 /dev/mmcblk0p* /dev/mmcblk0boot*; do
+    chroot "$arch" /usr/bin/blockdev --setro "$d"
+    test "$(chroot "$arch" /usr/bin/blockdev --getro "$d")" = 1
+done
+mod=/opt/h32-vendor/modules/basic
+echo "814844b34e2957b2668cb5e6232674f14f7c12782dac7fbeb4db839ae9bb3266  $mod/dtv_driver.ko" | sha256sum -c -
+echo "fc93bbed1bea9bea5f6e5ed83de279c431d87c119005309b0dbb6d3c5a2be044  $mod/modules/snd-mtk.ko" | sha256sum -c -
+if ! grep -q '^mtk_mod ' /proc/modules; then
+    insmod "$mod/dtv_driver.ko" panel_early_init=-1
+fi
+test "$(cat /sys/module/mtk_mod/parameters/panel_early_init)" = -1
+if ! grep -q '^snd_mtk ' /proc/modules; then insmod "$mod/modules/snd-mtk.ko"; fi
+sleep 3
+grep -q mtk /proc/asound/cards
+echo 'H32_AUDIO_READY'

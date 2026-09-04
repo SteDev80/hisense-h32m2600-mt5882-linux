@@ -1,0 +1,24 @@
+#!/bin/sh
+# Deliberately enables only the self-contained MT7603U module, never DTV/Mali.
+set -eu
+case " $(cat /proc/cmdline) " in
+  *' h32vendor=0 '*) echo 'Vendor Wi-Fi disabled by bootarg'; exit 0 ;;
+esac
+test "$(uname -r)" = 3.10.27 || { echo 'Wrong kernel; refusing vendor module'; exit 1; }
+awk '$1=="/dev/sda2" && $2=="/" {ok=1} END {exit !ok}' /proc/mounts || {
+    echo 'Not running from USB root; refusing automatic module load'; exit 1;
+}
+found=0
+for d in /sys/bus/usb/devices/*; do
+    [ -f "$d/idVendor" ] && [ -f "$d/idProduct" ] || continue
+    if [ "$(cat "$d/idVendor")" = 0e8d ] && [ "$(cat "$d/idProduct")" = 7603 ]; then found=1; fi
+done
+test "$found" = 1 || { echo 'MT7603U not enumerated'; exit 1; }
+cd /opt/h32-vendor
+sha256sum -c SHA256SUMS >/dev/null || { echo 'Vendor payload hash mismatch'; exit 1; }
+if ! grep -q '^mt7603u_sta ' /proc/modules; then
+    insmod modules/basic/wifi_ko/mt7603u_sta.ko
+fi
+echo '=== MT7603U MODULE LOADED ==='
+echo 'No Wi-Fi credentials or automatic association configured.'
+ls /sys/class/net

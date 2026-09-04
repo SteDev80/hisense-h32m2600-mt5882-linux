@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+export LD_LIBRARY_PATH=/opt/h32-audio/lib
+export ALSA_CONFIG_DIR=/opt/h32-audio/share/alsa
+export ALSA_CONFIG_PATH=/opt/h32-audio/asound.conf
+export SDL_AUDIODRIVER=alsa
+export SDL_AUDIO_ALSA_DEFAULT_DEVICE=default
+export SDL_RENDER_DRIVER=software
+export DISPLAY=${DISPLAY:-:0}
+if ! grep -q mtk /proc/asound/cards; then
+    echo 'Audio TV non disponibile. Controllare /var/log/h32-audio.log.' >&2
+    exit 1
+fi
+exec /usr/bin/ffplay -nostats -loglevel warning -autoexit -volume 10 -x 800 -y 450 "$@"
