@@ -1,16 +1,16 @@
 # Guida H32 Linux USB
 
-Configurazione provata il 4 settembre 2026, non procedura universale per altre TV.
+Configurazione provata fino al 9 settembre 2026, non procedura universale per altre TV.
 
 ## Accensione
 
-1. Lascia la TV spenta, inserisci la USB Linux già preparata e collega il TTL
-   al PC con il cablaggio già verificato. Non cambiare tensioni o collegamenti.
-2. Chiudi gli altri programmi che occupano la seriale.
-3. Apri H32BootSelector, scegli la porta e attiva **Variante USB con driver
-   recuperati (p27 non montata)**.
-4. Scegli **Avvia Buildroot USB + driver**, accendi la TV quando richiesto.
-5. Attendi: quattro note indicano audio, desktop, LAN, VNC e SMB pronti.
+1. A TV spenta inserisci la USB Linux già preparata.
+2. Accendi normalmente: non occorrono PC, selettore Windows o TTL.
+3. Attendi: quattro note indicano audio, desktop, LAN, VNC e SMB pronti.
+
+Se la chiavetta è assente, U-Boot avvia automaticamente il sistema Hisense.
+Il TTL resta uno strumento di recupero e non deve rimanere collegato nell'uso
+quotidiano.
 
 Buildroot contiene già desktop e programmi Arch in chroot: non serve scegliere
 il percorso Arch sperimentale separato. La USB deve restare inserita.
@@ -27,7 +27,7 @@ prima dell'uso su altri PC. Non impartire `saveenv`.
 
 ## Desktop e applicazioni
 
-Client VNC: `<IP-TV>:5900`, nel laboratorio `192.168.1.52:5900`.
+Client VNC: `<IP-TV>:5900`, nel laboratorio `192.168.1.54:5900`.
 Usa la password privata configurata sulla TV, non una credenziale pubblica.
 
 - **Start**: applicazioni, terminali, Wi-Fi, arresto.
@@ -38,9 +38,9 @@ Usa la password privata configurata sulla TV, non una credenziale pubblica.
 
 Il catalogo non garantisce compatibilità di ogni pacchetto ARM moderno con il
 kernel 3.10.27. Non aggiornare tutto alla cieca o disabilitare le firme pacman.
-Correggi data e ora prima di usare TLS o installare programmi. Il fuso Arch è
-Europe/Rome; la sincronizzazione con il PC è stata fatta durante i test, non
-è garantita automaticamente a ogni accensione.
+Il fuso Arch è Europe/Rome. `S99zzzztime` sincronizza l'orologio tramite NTP
+quando la rete diventa disponibile e poi ogni ora; in caso di errore riprova.
+Richiede il pacchetto Arch `ntp`, che fornisce `sntp`.
 
 ## Audio, video e melodia
 
@@ -67,14 +67,15 @@ Audio: `/var/log/h32-audio.log` → `H32_AUDIO_READY`.
 
 ## Condivisione Windows 11
 
-In Esplora file apri `\\192.168.1.52\Condivisa`, adattando l'IP.
+In Esplora file apri `\\192.168.1.54\Condivisa`, adattando l'IP.
 Account `HISENSE-TV\tv`, password privata impostata nella preparazione.
 Connetti un'unità di rete con una lettera libera; nella macchina di prova è T:.
 
 Dati USB: `/mnt/usb2/Condivisa`; nel desktop Arch: `/srv/condivisa`.
 SMB2/3 autenticato e firmato, niente guest/SMB1 o condivisione dell'intero root.
-Non è garantita la comparsa automatica nell'elenco Rete. Riserva l'IP nel router
-oppure aggiorna i collegamenti quando cambia. Non esporre i servizi a Internet.
+Non è garantita la comparsa automatica nell'elenco Rete. Sulla macchina di prova
+il router riserva `192.168.1.54` al MAC Wi-Fi della TV. Non esporre i servizi a
+Internet.
 
 ## Wi-Fi e Home Assistant
 
@@ -88,8 +89,7 @@ né una configurazione certificata per centrali o impianti critici.
 ## Spegnimento
 
 Usa **Start → Spegni Linux** e attendi l'arresto prima di togliere USB o corrente.
-La semplice accensione con USB inserita **non basta ancora**: serve il TTL.
-Nessuna modifica U-Boot permanente è stata installata.
+Non rinominare o eliminare `uMulti-h32-usb-test-v2` dalla partizione FAT32.
 
 ## Ricostruzione e installazione
 
@@ -120,14 +120,13 @@ sovrascrivere un'installazione esistente.
 Sfondo: copiare `assets/desktop/portrait.jpg` nel chroot Arch come
 `/usr/local/share/h32-desktop/portrait.jpg`, poi riavviare il desktop.
 
-## Avvio autonomo: limite conosciuto
+## Avvio autonomo e limite conosciuto
 
-Il contenitore unico kernel/initramfs parte, ma `bootm` ha avviato anche una
-copia con payload alterato nonostante `verify=yes`. `iminfo` verifica il CRC;
-il selettore Windows ne controlla il risultato prima di inviare `bootm`.
-Il parser di questo U-Boot non supporta le condizioni normalmente usate per
-decidere in autonomia: non basta concatenare i comandi e salvarli.
+Il contenitore unico kernel/initramfs è stato installato nella catena di boot.
+Il fallback al firmware originale è stato provato realmente con USB rimossa;
+l'avvio Linux è stato provato senza TTL. Questa vecchia build `bootm` non rifiuta
+però ogni alterazione del payload nonostante `verify=yes`: una USB corrotta può
+bloccarsi dopo l'ingresso nel kernel. Rimuovendola al riavvio torna Hisense.
 
-Occorrono un controllo affidabile e un recupero collaudato. Il kernel USB
-supera gli slot originali da 4 MiB: non flasharlo lì. Dettagli nel
-[rapporto del test](../work/README-usb-multi-test.md).
+Il kernel USB supera gli slot originali da 4 MiB: non flasharlo lì. Comando,
+backup e ripristino sono nella [guida all'autoboot](../work/README-autoboot-usb.md).

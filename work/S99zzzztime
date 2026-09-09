@@ -1,0 +1,36 @@
+#!/bin/sh
+# USB-only time synchronisation; no RTC, firmware or eMMC writes.
+arch=/mnt/usb2/archlinux/rootfs
+lock=/run/h32-timesync
+log=/var/log/h32-timesync.log
+case "$1" in
+  start)
+    "$0" run </dev/null >/dev/null 2>&1 &
+    ;;
+  run)
+    awk '$1=="/dev/sda2" && $2=="/" {ok=1} END{exit !ok}' /proc/mounts || exit 1
+    mkdir "$lock" 2>/dev/null || exit 0
+    echo $$ > "$lock/pid"
+    trap 'rm -f "$lock/pid"; rmdir "$lock"' EXIT
+    trap 'exit 0' TERM INT
+    while :; do
+      if [ -x "$arch/usr/bin/sntp" ] && ip route | grep -q '^default ' && grep -q '^nameserver ' /etc/resolv.conf; then
+        # DHCP may refresh the host resolver after the chroot was started.
+        cp /etc/resolv.conf "$arch/etc/resolv.conf"
+        if chroot "$arch" /usr/bin/timeout 40 /usr/bin/sntp -4 -S -s -M 128 -t 8 time.cloudflare.com time.google.com > "$log" 2>&1; then
+          date -u '+H32_TIME_SYNC_OK %Y-%m-%d %H:%M:%S UTC' >> "$log"
+          sleep 3600
+        else
+          echo H32_TIME_SYNC_RETRY >> "$log"
+          sleep 60
+        fi
+      else
+        sleep 15
+      fi
+    done
+    ;;
+  status)
+    cat "$log" 2>/dev/null
+    ;;
+  *) echo "Usage: $0 {start|status}"; exit 1 ;;
+esac

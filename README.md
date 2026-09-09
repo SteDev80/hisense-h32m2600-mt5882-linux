@@ -4,8 +4,8 @@ Linux su chiavetta USB con desktop remoto, applicazioni leggere, Wi-Fi,
 condivisione Windows e **audio dagli altoparlanti della TV**.
 Configurazione collaudata su una specifica H32M2600, non firmware universale.
 
-**Stato al 4 settembre 2026:** sistema USB utilizzabile; l'avvio richiede ancora
-il selettore Windows/TTL. L'avvio automatico senza TTL **non è installato**.
+**Stato al 9 settembre 2026:** avvio automatico USB installato e verificato
+senza TTL. Con la chiavetta assente il bootloader torna al sistema Hisense.
 
 ![Desktop H32 con sfondo personalizzato](docs/screenshots/desktop.png)
 
@@ -17,7 +17,8 @@ il selettore Windows/TTL. L'avvio automatico senza TTL **non è installato**.
 - [Condivisione Windows](work/README-samba-usb.md)
 - [Desktop e programmi](work/README-h32-desktop.md)
 - [Bootstrap e driver recuperati](work/README-usb-vendor-v1.md)
-- [Limiti dell'avvio automatico](work/README-usb-multi-test.md)
+- [Avvio automatico USB e recupero](work/README-autoboot-usb.md)
+- [Collaudo del contenitore multi-image](work/README-usb-multi-test.md)
 
 ## Funzioni verificate e limiti
 
@@ -33,7 +34,8 @@ il selettore Windows/TTL. L'avvio automatico senza TTL **non è installato**.
 | Wi-Fi | MT7603U con driver e componenti WPA recuperati dalla propria TV |
 | File Windows | Samba autenticato SMB2/3, cartella USB Condivisa |
 | Home Assistant | Core sperimentale; avvio separato dalla melodia |
-| Avvio senza TTL | **Non completato**, multi-image solo sperimentale |
+| Avvio senza TTL | Verificato: USB presente → Linux; USB assente → Hisense |
+| Data e ora | Europe/Rome, sincronizzazione Internet all'avvio e ogni ora |
 
 La melodia attende audio, desktop, LAN, VNC e SMB, non tutti i programmi.
 VNC non trasporta l'audio: il suono esce dalla TV. Un lettore audio per volta.
@@ -59,10 +61,11 @@ del pannello. Non implicano accelerazione video o desktop sul pannello fisico.
 
 ## Sicurezza
 
-Il percorso **USB vendor / Buildroot** modifica le variabili U-Boot soltanto
-in RAM. Non impartisce `saveenv`, flash o scritture dirette eMMC. Il servizio
-audio verifica il root USB e imposta l'eMMC in sola lettura nel block layer:
-questa protezione non equivale a una verifica di tutti i driver proprietari.
+La macchina collaudata ha una sola modifica persistente: `bootcmd` nell'ambiente
+U-Boot. Kernel, rootfs e programmi restano sulla USB; nessun kernel è stato
+flashato negli slot originali. Il servizio audio verifica il root USB e imposta
+l'eMMC in sola lettura nel block layer: questa protezione non equivale a una
+verifica di tutti i driver proprietari. Backup e recupero sono documentati.
 
 Esistono script storici per p27, preparazione dischi e ricerca: **non eseguire
 tutti gli script in sequenza**. La preparazione di una chiavetta può cancellare

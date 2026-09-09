@@ -1,6 +1,7 @@
 # USB multi-image experiment, 2026-09-04
 
-Not installed as automatic boot. No saveenv or eMMC write commands sent.
+Initially tested only in RAM. On 9 September 2026 the validated image was
+installed as the USB-first target after separate present/absent USB tests.
 
 Separate file `uMulti-h32-usb-test-v2`, 7004453 bytes, SHA256
 `217574bdfb8f59a281b55e20a3298a906b72049b9b8e76618f97d96733b94d75`.
@@ -37,7 +38,9 @@ The second test retained stock bootargs; the USB initramfs nevertheless
 selected USB root. Subsequent live check: /dev/sda2 mounted at /, no mmc
 mount, /sys/block/mmcblk0/ro=1. Restore normal tested USB bootargs afterward.
 
-Still required: a reliably enforced integrity gate, actual original-firmware
-fallback test, and environment backup/restore validation before persistence.
-An image that passes CRC but hangs after kernel entry cannot fall back by
-simple command continuation. No cold-boot or automatic-selector guarantee.
+The actual original-firmware fallback was subsequently verified with USB absent,
+then an automatic cold boot from USB was verified without TTL. The original and
+modified 2 MiB environment partition were archived outside the repository.
+The payload-CRC limitation remains: an image that reaches the kernel and hangs
+cannot fall back during the same boot. Remove the USB and power-cycle to boot
+Hisense. See `README-autoboot-usb.md`.
