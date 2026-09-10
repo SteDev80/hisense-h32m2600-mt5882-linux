@@ -9,6 +9,8 @@ file di configurazione sono sulla chiavetta USB; non scrive eMMC o U-Boot.
 - `S99zzzzinput`: carica il modulo USB HID esatto e avvia il demone IR.
 - `H32-Musica-Test.m3u`: esempio con percorsi relativi; non include i brani.
 - `h32-media-play`: applica il volume persistente e usa FFplay/ALSA della TV.
+- `h32-desktop.py`: mostra accanto all'orologio lo stesso livello e permette
+  di regolarlo con un cursore 0–100%.
 
 Il programma verifica kernel `3.10.27`, root su `/dev/sda2` ed eMMC in sola
 lettura prima di accedere al ricevitore. L'accesso MMIO è esclusivamente in

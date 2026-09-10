@@ -35,6 +35,9 @@ Usa la password privata configurata sulla TV, non una credenziale pubblica.
   dimensioni e chiede conferma. Aggiorna l'elenco dopo l'installazione.
 - **Personalizza**: palette dello sfondo; immagine in basso a destra.
 - **Desktop**: minimizza/ripristina senza chiudere documenti.
+- **Vol 0–100%** accanto all'orologio: trascina il cursore per salvare il
+  livello sulla USB. Se FFplay è attivo, il desktop invia anche la variazione
+  corrente a passi del 10%; altrimenti il valore vale dalla prossima apertura.
 
 Il catalogo non garantisce compatibilità di ogni pacchetto ARM moderno con il
 kernel 3.10.27. Non aggiornare tutto alla cieca o disabilitare le firme pacman.
@@ -82,7 +85,8 @@ un ricevitore USB supportato da Linux è l'alternativa per LIRC generico.
 La scheda Playlist apre file M3U, M3U8 e PLS, inclusi percorsi relativi e URL,
 e li riproduce con l'uscita audio della TV. Un esempio è
 `work/H32-Musica-Test.m3u`; i brani citati non sono inclusi nel repository.
-Il volume scelto viene memorizzato in `/root/.config/h32-volume` sulla USB.
+Il volume scelto viene memorizzato in `/root/.config/h32-volume` sulla USB ed è
+condiviso con il cursore accanto all'orologio.
 
 ## Condivisione Windows 11
 

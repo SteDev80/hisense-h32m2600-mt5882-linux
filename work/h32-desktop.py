@@ -1,8 +1,10 @@
 #!/usr/bin/python3
 """Small X11 desktop companion; runs in the USB Arch chroot, not systemd."""
 import datetime
+import ctypes as C
 import os
 import fcntl
+import re
 import sys
 from pathlib import Path
 import subprocess
@@ -12,6 +14,7 @@ from tkinter import messagebox, filedialog, simpledialog
 BG, PANEL, CARD, TEXT, MUTED, ACCENT = '#101c30', '#132239', '#21344f', '#edf4ff', '#9cb2cf', '#4dd7bb'
 HOST = '/proc/1/root'
 ARCH = '/mnt/usb2/archlinux/rootfs'
+VOLUME_CONFIG = Path('/root/.config/h32-volume')
 CATALOG = [
     ('builtin-files', 'File manager', 'Gestore leggero integrato: cartelle e file USB', ['builtin-files']),
     ('mousepad', 'Editor di testo', 'Documenti e configurazioni', ['mousepad']),
@@ -73,6 +76,29 @@ class Desktop:
         button(self.dock, 'Desktop', lambda: spawn(host('fluxbox-remote', 'ShowDesktop'))).pack(side='left', padx=3)
         self.clock = tk.Label(self.dock, bg=PANEL, fg=TEXT, font=('DejaVu Sans', 10), padx=18)
         self.clock.pack(side='right')
+        try:
+            initial_volume = max(0, min(100, int(VOLUME_CONFIG.read_text().strip())))
+        except (OSError, ValueError):
+            initial_volume = 10
+        self.saved_volume = initial_volume
+        self.volume_dragging = False
+        self.volume_value = tk.IntVar(value=initial_volume)
+        volume_box = tk.Frame(self.dock, bg=PANEL)
+        volume_box.pack(side='right', padx=(5, 2), pady=3)
+        self.volume_label = tk.Label(volume_box, bg=PANEL, fg=TEXT,
+                                     font=('DejaVu Sans', 9), width=9)
+        self.volume_label.pack(side='left')
+        self.volume_slider = tk.Scale(volume_box, from_=0, to=100, resolution=10,
+                                      orient='horizontal', showvalue=False, length=135,
+                                      variable=self.volume_value, command=self.volume_changed,
+                                      bg=PANEL, fg=TEXT, troughcolor=CARD,
+                                      activebackground=ACCENT, highlightthickness=0,
+                                      bd=0, sliderlength=16)
+        self.volume_slider.pack(side='left')
+        self.volume_slider.bind('<ButtonPress-1>', lambda _event: self.set_volume_dragging(True))
+        self.volume_slider.bind('<ButtonRelease-1>', lambda _event: self.commit_volume())
+        self.volume_slider.bind('<KeyRelease>', lambda _event: self.commit_volume())
+        self.volume_changed(initial_volume)
         self.popup = None
         self.tick()
         self.root.after(100, self.root.lower)
@@ -129,7 +155,70 @@ class Desktop:
 
     def tick(self):
         self.clock.configure(text=datetime.datetime.now().strftime('%d/%m/%Y  %H:%M'))
+        if not self.volume_dragging:
+            try:
+                external = max(0, min(100, int(VOLUME_CONFIG.read_text().strip())))
+                if external != self.saved_volume:
+                    self.saved_volume = external
+                    self.volume_value.set(external)
+                    self.volume_changed(external)
+            except (OSError, ValueError):
+                pass
         self.root.after(1000, self.tick)
+
+    def set_volume_dragging(self, active):
+        self.volume_dragging = active
+
+    def volume_changed(self, value):
+        self.volume_label.configure(text=f'Vol {int(float(value))}%')
+
+    def commit_volume(self):
+        self.volume_dragging = False
+        value = int(self.volume_value.get())
+        previous = self.saved_volume
+        VOLUME_CONFIG.parent.mkdir(parents=True, exist_ok=True)
+        temporary = VOLUME_CONFIG.with_suffix('.tmp')
+        temporary.write_text(str(value) + '\n')
+        temporary.replace(VOLUME_CONFIG)
+        self.saved_volume = value
+        self.adjust_running_player(value - previous)
+
+    def adjust_running_player(self, delta):
+        """Apply 10% steps to an active FFplay window and restore focus."""
+        if not delta:
+            return
+        try:
+            listing = subprocess.check_output(['/bin/xprop', '-root', '_NET_CLIENT_LIST'],
+                                              text=True, stderr=subprocess.DEVNULL)
+            target = None
+            for raw_id in re.findall(r'0x[0-9a-fA-F]+', listing):
+                properties = subprocess.check_output(['/bin/xprop', '-id', raw_id, 'WM_CLASS'],
+                                                     text=True, stderr=subprocess.DEVNULL)
+                if 'ffplay' in properties.lower():
+                    target = int(raw_id, 16)
+                    break
+            if target is None:
+                return
+            x11, xtst = C.CDLL('libX11.so.6'), C.CDLL('libXtst.so.6')
+            x11.XOpenDisplay.argtypes = [C.c_char_p]
+            x11.XOpenDisplay.restype = C.c_void_p
+            display = x11.XOpenDisplay(b':0')
+            if not display:
+                return
+            focus, revert = C.c_ulong(), C.c_int()
+            x11.XGetInputFocus(display, C.byref(focus), C.byref(revert))
+            x11.XSetInputFocus(display, C.c_ulong(target), 2, 0)
+            symbol = x11.XStringToKeysym(b'0' if delta > 0 else b'9')
+            keycode = x11.XKeysymToKeycode(display, symbol)
+            for _ in range(abs(delta) // 10):
+                xtst.XTestFakeKeyEvent(display, keycode, 1, 0)
+                xtst.XTestFakeKeyEvent(display, keycode, 0, 0)
+            x11.XFlush(display)
+            x11.XSetInputFocus(display, focus, revert.value, 0)
+            x11.XFlush(display)
+            x11.XCloseDisplay(display)
+        except (OSError, subprocess.SubprocessError, ValueError):
+            pass
 
     def window(self, title, size='650x480'):
         win = tk.Toplevel(self.root, bg=BG)
