@@ -4,7 +4,7 @@ Linux su chiavetta USB con desktop remoto, applicazioni leggere, Wi-Fi,
 condivisione Windows e **audio dagli altoparlanti della TV**.
 Configurazione collaudata su una specifica H32M2600, non firmware universale.
 
-**Stato al 9 settembre 2026:** avvio automatico USB installato e verificato
+**Stato al 10 settembre 2026:** avvio automatico USB installato e verificato
 senza TTL. Con la chiavetta assente il bootloader torna al sistema Hisense.
 
 ![Desktop H32 con sfondo personalizzato](docs/screenshots/desktop.png)
@@ -16,6 +16,7 @@ senza TTL. Con la chiavetta assente il bootloader torna al sistema Hisense.
 - [Suono di sistema pronto](work/README-ready-sound.md)
 - [Condivisione Windows](work/README-samba-usb.md)
 - [Desktop e programmi](work/README-h32-desktop.md)
+- [Telecomando IR e playlist](work/README-ir-playlist.md)
 - [Bootstrap e driver recuperati](work/README-usb-vendor-v1.md)
 - [Avvio automatico USB e recupero](work/README-autoboot-usb.md)
 - [Collaudo del contenitore multi-image](work/README-usb-multi-test.md)
@@ -28,6 +29,8 @@ senza TTL. Con la chiavetta assente il bootloader torna al sistema Hisense.
 | Sistema | Buildroot USB con Arch Linux ARM in chroot; non Arch mainline |
 | Desktop | Xvfb + Fluxbox + Python/Tk, VNC 1024×768 |
 | Applicazioni | Menu Start, catalogo con conferma, file manager |
+| Telecomando IR | Apprendimento sperimentale, visualizzazione codice e azioni X11 |
+| Playlist | Lettura M3U/M3U8/PLS tramite il lettore audio TV |
 | Audio | FFplay + SDL/ALSA isolati, altoparlanti TV, mono 48 kHz |
 | Suono di avvio | Quattro note a sistema pronto, confermate all'ascolto |
 | Video | Riproduzione software provata; accelerazione GPU non verificata |

@@ -1,6 +1,6 @@
 # Guida H32 Linux USB
 
-Configurazione provata fino al 9 settembre 2026, non procedura universale per altre TV.
+Configurazione provata fino al 10 settembre 2026, non procedura universale per altre TV.
 
 ## Accensione
 
@@ -65,6 +65,25 @@ Per riabilitarla al prossimo boot rimuovere soltanto quel file.
 Log: `/var/log/h32-ready-sound.log` → `H32_READY_SOUND_PLAYED`.
 Audio: `/var/log/h32-audio.log` → `H32_AUDIO_READY`.
 
+## Telecomando IR e playlist
+
+Apri **Programmi → Telecomando IR e playlist**. Nella scheda Telecomando:
+
+1. **Leggi codice** mostra nel riquadro il codice grezzo quantizzato senza
+   associarlo a un'azione.
+2. **Registra** accanto a una funzione, poi una pressione breve sul telecomando,
+   salva l'associazione in `/root/.config/h32-ir-map.json` sulla USB.
+3. **Prova** invia l'azione al desktop. Non registrare Power durante i test.
+
+Il telecomando deve essere rilevato dal ricevitore e dal protocollo configurato
+nel driver MediaTek. Non è garantita la compatibilità con ogni telecomando IR;
+un ricevitore USB supportato da Linux è l'alternativa per LIRC generico.
+
+La scheda Playlist apre file M3U, M3U8 e PLS, inclusi percorsi relativi e URL,
+e li riproduce con l'uscita audio della TV. Un esempio è
+`work/H32-Musica-Test.m3u`; i brani citati non sono inclusi nel repository.
+Il volume scelto viene memorizzato in `/root/.config/h32-volume` sulla USB.
+
 ## Condivisione Windows 11
 
 In Esplora file apri `\\192.168.1.54\Condivisa`, adattando l'IP.
@@ -101,6 +120,7 @@ release, simboli o hash diversi. Gli artefatti locali non sono distribuiti qui.
 - [Bootstrap USB](../work/README-usb-vendor-v1.md).
 - [Runtime audio e installer](../work/README-audio-permanente-usb.md).
 - [Desktop e dipendenze](../work/README-h32-desktop.md).
+- [Telecomando IR e playlist](../work/README-ir-playlist.md).
 - [Samba e account](../work/README-samba-usb.md).
 - [Melodia e controlli](../work/README-ready-sound.md).
 

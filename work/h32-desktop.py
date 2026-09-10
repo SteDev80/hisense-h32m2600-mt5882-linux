@@ -21,6 +21,7 @@ CATALOG = [
     ('htop', 'Monitor sistema', 'Memoria e processi nel terminale', ['htop']),
     ('nano', 'Nano', 'Editor nel terminale', ['nano']),
     ('builtin-video', 'Lettore video', 'FFplay del sistema USB: scegli un file locale', ['builtin-video']),
+    ('builtin-ir', 'Telecomando IR e playlist', 'Registra i tasti IR e riproduci playlist M3U/PLS', ['builtin-ir']),
 ]
 
 def host(*args):
@@ -214,6 +215,8 @@ class Desktop:
             self.files()
         elif argv[0] == 'builtin-video':
             self.video()
+        elif argv[0] == 'builtin-ir':
+            spawn(['/usr/local/bin/h32-ir-manager.py'])
         elif argv[0] in ('htop', 'nano'):
             terminal(title, ['chroot', ARCH, '/usr/bin/env', 'TERM=xterm', *argv])
         else:

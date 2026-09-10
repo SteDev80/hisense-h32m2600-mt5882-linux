@@ -1,0 +1,28 @@
+#!/bin/sh
+# Enable the exact recovered USB HID module on the tested USB system.
+module=/opt/h32-vendor/modules/basic/modules/usbhid.ko
+expected=5356431b46eb48944215e3870de42887670c13fa1cfa291509deb349821a6e9c
+log=/var/log/h32-input.log
+case "$1" in
+  start)
+    {
+      test "$(uname -r)" = 3.10.27 || exit 1
+      awk '$1=="/dev/sda2" && $2=="/" {ok=1} END{exit !ok}' /proc/mounts || exit 1
+      test "$(cat /sys/block/mmcblk0/ro)" = 1 || exit 1
+      actual="$(sha256sum "$module" | awk '{print $1}')"
+      test "$actual" = "$expected" || exit 1
+      grep -q '^usbhid ' /proc/modules || insmod "$module"
+      echo H32_USB_HID_READY
+      arch=/mnt/usb2/archlinux/rootfs
+      mkdir -p "$arch/tmp/.X11-unix"
+      grep -q " $arch/tmp/.X11-unix " /proc/mounts || mount --bind /tmp/.X11-unix "$arch/tmp/.X11-unix"
+      if test -x "$arch/usr/local/bin/h32-ir-manager.py"; then
+        chroot "$arch" /usr/bin/env DISPLAY=:0 HOME=/root \
+          /usr/bin/python3 /usr/local/bin/h32-ir-manager.py --daemon \
+          >>/var/log/h32-ir.log 2>&1 &
+      fi
+    } > "$log" 2>&1
+    ;;
+  status) cat "$log" 2>/dev/null ;;
+  *) echo "Usage: $0 {start|status}"; exit 1 ;;
+esac

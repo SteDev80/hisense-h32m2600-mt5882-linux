@@ -21,6 +21,8 @@ Non modifica eMMC, firmware Hisense o ambiente U-Boot.
   cartella, apertura testo con Nano e apertura video). Non richiede PCManFM.
 - **Lettore video → Apri** permette di scegliere un file e usa FFplay del
   sistema Buildroot; premere `q` per uscire. VNC non trasporta l'audio.
+- **Telecomando IR e playlist** visualizza il codice IR, registra associazioni
+  sperimentali e apre playlist M3U/M3U8/PLS.
 - **Installa** apre un terminale con pacchetti, dimensioni e conferma pacman.
 - Dopo l'installazione premere **Aggiorna elenco**, poi **Apri**.
 - **Personalizza** cambia palette dello sfondo e salva la scelta sulla USB.
@@ -37,6 +39,8 @@ se non riesce: occorre correggere data e ora prima di installare.
 ## File
 
 - `h32-desktop.py`: wallpaper, dock, Start e catalogo, Python/Tk dentro Arch.
+- `h32-ir-manager.py`: apprendimento IR, azioni X11 e lettore playlist.
+- `S99zzzzinput`: modulo USB HID e servizio IR in avvio automatico.
 - `h32-package-task`: installer interattivo con lista di pacchetti consentiti.
 - `h32-desktop-start`, `S99zzdesktop`: avvio nel desktop VNC esistente.
 - `h32-fluxbox.style`, `h32-fluxbox.init`: tema e configurazione Fluxbox.

@@ -11,4 +11,13 @@ if ! grep -q mtk /proc/asound/cards; then
     echo 'Audio TV non disponibile. Controllare /var/log/h32-audio.log.' >&2
     exit 1
 fi
-exec /usr/bin/ffplay -nostats -loglevel warning -autoexit -volume 10 -x 800 -y 450 "$@"
+volume_file=/mnt/usb2/archlinux/rootfs/root/.config/h32-volume
+volume=10
+if [ -r "$volume_file" ]; then
+    candidate=$(sed -n '1p' "$volume_file")
+    case "$candidate" in
+        ''|*[!0-9]*) ;;
+        *) [ "$candidate" -le 100 ] && volume=$candidate ;;
+    esac
+fi
+exec /usr/bin/ffplay -nostats -loglevel warning -autoexit -volume "$volume" -x 800 -y 450 "$@"

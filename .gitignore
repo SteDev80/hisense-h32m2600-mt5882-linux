@@ -13,6 +13,8 @@
 # Third-party source trees are fetched separately
 /vendor/
 /work/mediatek-linux-3.10/
+/work/.tools/
+/work/*-disasm.txt
 
 # Build output and local IDE state
 **/bin/
