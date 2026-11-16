@@ -27,8 +27,8 @@ Non modifica eMMC, firmware Hisense o ambiente U-Boot.
 - Dopo l'installazione premere **Aggiorna elenco**, poi **Apri**.
 - **Personalizza** cambia palette dello sfondo e salva la scelta sulla USB.
 - **Desktop** minimizza/ripristina le finestre; non chiude i documenti.
-- Il cursore **Vol** accanto all'orologio regola il livello a passi del 10% e
-  lo conserva sulla USB per le riproduzioni successive.
+- Il cursore **Vol** accanto all'orologio regola il livello a passi dell'1%,
+  usa `0%` come vero muto e lo conserva sulla USB.
 - **Start → Spegni Linux** arresta il sistema prima di rimuovere la USB.
 
 Nano e Htop sono installati e rispondono correttamente al controllo versione.

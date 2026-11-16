@@ -1,6 +1,7 @@
+param([string]$Port = 'COM3')
 $ErrorActionPreference = 'Stop'
 
-$serial = [System.IO.Ports.SerialPort]::new('COM3', 115200, 'None', 8, 'One')
+$serial = [System.IO.Ports.SerialPort]::new($Port, 115200, 'None', 8, 'One')
 $serial.Handshake = 'None'
 $serial.DtrEnable = $false
 $serial.RtsEnable = $false

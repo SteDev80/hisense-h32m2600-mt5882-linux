@@ -35,9 +35,9 @@ Usa la password privata configurata sulla TV, non una credenziale pubblica.
   dimensioni e chiede conferma. Aggiorna l'elenco dopo l'installazione.
 - **Personalizza**: palette dello sfondo; immagine in basso a destra.
 - **Desktop**: minimizza/ripristina senza chiudere documenti.
-- **Vol 0–100%** accanto all'orologio: trascina il cursore per salvare il
-  livello sulla USB. Se FFplay è attivo, il desktop invia anche la variazione
-  corrente a passi del 10%; altrimenti il valore vale dalla prossima apertura.
+- **Vol 0–100%** accanto all'orologio, regolabile a passi dell'1%: trascina il cursore per salvare il
+  livello sulla USB. Se FFplay è attivo, il desktop applica il valore assoluto;
+  `0%` è muto. Altrimenti il valore vale dalla prossima apertura.
 
 Il catalogo non garantisce compatibilità di ogni pacchetto ARM moderno con il
 kernel 3.10.27. Non aggiornare tutto alla cieca o disabilitare le firme pacman.
@@ -47,7 +47,7 @@ Richiede il pacchetto Arch `ntp`, che fornisce `sntp`.
 
 ## Audio, video e melodia
 
-Apri MP3/WAV/video dal file manager o lettore. **Il suono esce dalla TV**, non
+Apri MP3/M4A/WAV/video dal file manager o lettore. **Il suono esce dalla TV**, non
 dal PC VNC. Volume iniziale 10%: `9` diminuisce, `0` aumenta, spazio pausa,
 `q` chiude. Un solo lettore alla volta; video con rendering software.
 
@@ -154,3 +154,9 @@ bloccarsi dopo l'ingresso nel kernel. Rimuovendola al riavvio torna Hisense.
 
 Il kernel USB supera gli slot originali da 4 MiB: non flasharlo lì. Comando,
 backup e ripristino sono nella [guida all'autoboot](../work/README-autoboot-usb.md).
+
+Sul desktop sono presenti due schede informative:
+
+- **Home Assistant** mostra l'indirizzo locale `http://192.168.1.50:8123`;
+- **RuView** rimanda al progetto ufficiale e ricorda che servono sensori Wi-Fi
+  CSI compatibili e il relativo server prima dell'integrazione con Home Assistant.

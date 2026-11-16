@@ -13,8 +13,14 @@ This is not a generic Hisense firmware or an instruction for other boards.
 Installed `bootcmd`:
 
 ```text
-usb start; mw.l 0x05000000 0 0x10; fatload usb 0:1 0x05000000 uMulti-h32-usb-test-v2; bootm 0x05000000; eboot.lzo kernelA rootfsA
+usb reset; usb reset; usb reset; usb reset; usb reset; usb reset; usb reset; mw.l 0x05000000 0 0x10; fatload usb 0:1 0x05000000 uMulti-h32-usb-test-v2; bootm 0x05000000; eboot.lzo kernelA rootfsA
 ```
+
+The saved environment also uses `bootdelay=15`. This gives the Lexar enough
+time to become ready after a true cold power-on; seven controller rescans then
+cover its remaining enumeration variability. The unattended test detected the
+Lexar, loaded all 7,004,453 bytes and reached `Starting kernel`. The stock
+Hisense fallback remains the final command.
 
 The RAM clearing before `fatload` prevents a missing file from reusing a stale
 legacy-image header. If loading or header parsing fails, `bootm` returns and the

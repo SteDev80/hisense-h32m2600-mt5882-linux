@@ -6,6 +6,7 @@ import os
 import fcntl
 import re
 import sys
+import time
 from pathlib import Path
 import subprocess
 import tkinter as tk
@@ -23,7 +24,7 @@ CATALOG = [
     ('geany', 'Editor di codice', 'Editor leggero per programmare', ['geany']),
     ('htop', 'Monitor sistema', 'Memoria e processi nel terminale', ['htop']),
     ('nano', 'Nano', 'Editor nel terminale', ['nano']),
-    ('builtin-video', 'Lettore video', 'FFplay del sistema USB: scegli un file locale', ['builtin-video']),
+    ('builtin-video', 'Lettore audio e video', 'FFplay del sistema USB: MP3, M4A, WAV e video', ['builtin-video']),
     ('builtin-ir', 'Telecomando IR e playlist', 'Registra i tasti IR e riproduci playlist M3U/PLS', ['builtin-ir']),
 ]
 
@@ -88,7 +89,7 @@ class Desktop:
         self.volume_label = tk.Label(volume_box, bg=PANEL, fg=TEXT,
                                      font=('DejaVu Sans', 9), width=9)
         self.volume_label.pack(side='left')
-        self.volume_slider = tk.Scale(volume_box, from_=0, to=100, resolution=10,
+        self.volume_slider = tk.Scale(volume_box, from_=0, to=100, resolution=1,
                                       orient='horizontal', showvalue=False, length=135,
                                       variable=self.volume_value, command=self.volume_changed,
                                       bg=PANEL, fg=TEXT, troughcolor=CARD,
@@ -126,7 +127,8 @@ class Desktop:
                       font=('DejaVu Sans', 9))
         for idx, (title, subtitle, callback) in enumerate([
             ('Programmi', 'Installa e apri applicazioni', self.software),
-            ('Home Assistant', 'Indirizzo per il browser del PC', self.homeassistant),
+            ('Home Assistant', f'Pannello domotico: {self.tv_ip()}:8123', self.homeassistant),
+            ('RuView', 'Guida al rilevamento tramite segnali Wi-Fi', self.ruview),
             ('Personalizza', 'Cambia i colori dello sfondo', self.change_wallpaper)]):
             y = 196 + idx*91
             tag = f'card{idx}'
@@ -170,23 +172,21 @@ class Desktop:
         self.volume_dragging = active
 
     def volume_changed(self, value):
-        self.volume_label.configure(text=f'Vol {int(float(value))}%')
+        numeric = int(float(value))
+        self.volume_label.configure(text='Vol MUTO' if numeric == 0 else f'Vol {numeric}%')
 
     def commit_volume(self):
         self.volume_dragging = False
         value = int(self.volume_value.get())
-        previous = self.saved_volume
         VOLUME_CONFIG.parent.mkdir(parents=True, exist_ok=True)
         temporary = VOLUME_CONFIG.with_suffix('.tmp')
         temporary.write_text(str(value) + '\n')
         temporary.replace(VOLUME_CONFIG)
         self.saved_volume = value
-        self.adjust_running_player(value - previous)
+        self.set_running_player_volume(value)
 
-    def adjust_running_player(self, delta):
-        """Apply 10% steps to an active FFplay window and restore focus."""
-        if not delta:
-            return
+    def set_running_player_volume(self, value):
+        """Set an active FFplay window from a known muted baseline."""
         try:
             listing = subprocess.check_output(['/bin/xprop', '-root', '_NET_CLIENT_LIST'],
                                               text=True, stderr=subprocess.DEVNULL)
@@ -202,18 +202,51 @@ class Desktop:
             x11, xtst = C.CDLL('libX11.so.6'), C.CDLL('libXtst.so.6')
             x11.XOpenDisplay.argtypes = [C.c_char_p]
             x11.XOpenDisplay.restype = C.c_void_p
+            x11.XStringToKeysym.argtypes = [C.c_char_p]
+            x11.XStringToKeysym.restype = C.c_ulong
+            x11.XKeysymToKeycode.argtypes = [C.c_void_p, C.c_ulong]
+            x11.XKeysymToKeycode.restype = C.c_uint
+            x11.XGetInputFocus.argtypes = [C.c_void_p, C.POINTER(C.c_ulong), C.POINTER(C.c_int)]
+            x11.XSetInputFocus.argtypes = [C.c_void_p, C.c_ulong, C.c_int, C.c_ulong]
+            xtst.XTestFakeKeyEvent.argtypes = [C.c_void_p, C.c_uint, C.c_int, C.c_ulong]
+            x11.XFlush.argtypes = [C.c_void_p]
+            x11.XCloseDisplay.argtypes = [C.c_void_p]
             display = x11.XOpenDisplay(b':0')
             if not display:
                 return
             focus, revert = C.c_ulong(), C.c_int()
             x11.XGetInputFocus(display, C.byref(focus), C.byref(revert))
             x11.XSetInputFocus(display, C.c_ulong(target), 2, 0)
-            symbol = x11.XStringToKeysym(b'0' if delta > 0 else b'9')
-            keycode = x11.XKeysymToKeycode(display, symbol)
-            for _ in range(abs(delta) // 10):
-                xtst.XTestFakeKeyEvent(display, keycode, 1, 0)
-                xtst.XTestFakeKeyEvent(display, keycode, 0, 0)
+            def send_key(name, count):
+                symbol = x11.XStringToKeysym(name)
+                keycode = x11.XKeysymToKeycode(display, symbol)
+                for _ in range(count):
+                    xtst.XTestFakeKeyEvent(display, keycode, 1, 0)
+                    xtst.XTestFakeKeyEvent(display, keycode, 0, 0)
+
+            # FFplay 6.1 changes volume in 0.75 dB steps, not in the 10-point
+            # increments shown by the slider.  First force its 0..128 mixer
+            # value to a real zero, then rebuild the requested level using the
+            # measured step count for each slider position.
+            send_key(b'9', 64)
             x11.XFlush(display)
+            time.sleep(0.08)
+            # Interpolate the measured FFplay key-step calibration so the UI
+            # can offer quiet 1% increments instead of jumping straight to 10%.
+            anchors = [(0, 0), (10, 13), (20, 22), (30, 26), (40, 30),
+                       (50, 33), (60, 35), (70, 37), (80, 38), (90, 39),
+                       (100, 41)]
+            lower, upper = anchors[0], anchors[-1]
+            for left, right in zip(anchors, anchors[1:]):
+                if left[0] <= value <= right[0]:
+                    lower, upper = left, right
+                    break
+            span = upper[0] - lower[0]
+            up_steps = lower[1] if not span else round(
+                lower[1] + (value - lower[0]) * (upper[1] - lower[1]) / span)
+            send_key(b'0', up_steps)
+            x11.XFlush(display)
+            time.sleep(0.08)
             x11.XSetInputFocus(display, focus, revert.value, 0)
             x11.XFlush(display)
             x11.XCloseDisplay(display)
@@ -235,7 +268,58 @@ class Desktop:
         self.root.lower()
 
     def homeassistant(self):
-        messagebox.showinfo('Home Assistant', 'Apri sul PC o sul telefono:\nhttp://192.168.1.52:8123\n\nL’indirizzo può cambiare con DHCP.\nIl browser Dillo non supporta questa interfaccia moderna.', parent=self.root)
+        address = self.tv_ip()
+        messagebox.showinfo(
+            'Home Assistant',
+            'HOME ASSISTANT DELLA TV\n\n'
+            'Dal PC o dal telefono collegato alla stessa rete apri:\n'
+            f'http://{address}:8123\n\n'
+            'Se la pagina non risponde, attendi il completamento dell’avvio.\n'
+            'Il browser Dillo della TV non supporta questa interfaccia moderna.',
+            parent=self.root)
+
+    def tv_ip(self):
+        try:
+            listing = subprocess.check_output(host('ip', '-4', 'addr', 'show'),
+                                              text=True, timeout=3)
+            addresses = re.findall(r'\binet (192\.168\.\d+\.\d+)/', listing)
+            if addresses:
+                return addresses[0]
+        except (OSError, subprocess.SubprocessError):
+            pass
+        return '<IP-TV>'
+
+    def ruview(self):
+        address = self.tv_ip()
+        messagebox.showinfo(
+            'RuView',
+            'RUVIEW · RILEVAMENTO TRAMITE WI-FI\n\n'
+            'Pannello locale, dal browser del PC:\n'
+            f'http://{address}:3000/ui/\n\n'
+            'RuView richiede sensori Wi-Fi CSI compatibili (per esempio nodi ESP32) '
+            'e un proprio server: non usa le telecamere IP già configurate.\n\n'
+            'Dopo l’installazione, collegalo a Home Assistant seguendo:\n'
+            'docs/integrations/home-assistant.md',
+            parent=self.root)
+
+    def link_for_pc(self, title, address):
+        win = self.window(title + ' · link per il PC', '690x185')
+        tk.Label(win, text='Copia questo indirizzo e aprilo nel browser del PC:',
+                 bg=BG, fg=TEXT, font=('DejaVu Sans', 11)).pack(anchor='w', pady=(0, 12))
+        value = tk.StringVar(value=address)
+        field = tk.Entry(win, textvariable=value, font=('DejaVu Sans', 11),
+                         bg=CARD, fg=TEXT, insertbackground=TEXT, relief='flat')
+        field.pack(fill='x', ipady=8)
+        field.select_range(0, 'end')
+        field.focus_set()
+        def copy_link():
+            self.root.clipboard_clear()
+            self.root.clipboard_append(address)
+            self.root.update()
+            copied.configure(text='Copiato negli appunti')
+        copied = tk.Label(win, text='', bg=BG, fg=ACCENT)
+        button(win, 'Copia link', copy_link, True).pack(side='left', pady=14)
+        copied.pack(side='left', padx=14)
 
     def wifi(self):
         terminal('Stato Wi-Fi', ['/bin/sh', '-c', '/usr/local/sbin/h32-wifi-status; printf "\\nPremi Invio per chiudere"; read answer'])
@@ -253,7 +337,11 @@ class Desktop:
             ('Terminale Arch', lambda: terminal('Arch Linux ARM', ['/usr/local/sbin/h32-arch-login'])),
             ('Terminale Buildroot', lambda: terminal('Buildroot', ['/bin/sh'])),
             ('Browser Dillo', lambda: spawn(host('dillo'))),
-            ('Home Assistant', self.homeassistant),
+            ('Link Home Assistant per il PC',
+             lambda: self.link_for_pc('Home Assistant', f'http://{self.tv_ip()}:8123')),
+            ('Link RuView per il PC',
+             lambda: self.link_for_pc('RuView', f'http://{self.tv_ip()}:3000/ui/')),
+            ('RuView · informazioni', self.ruview),
             ('Stato Wi-Fi', self.wifi),
             ('Cambia sfondo', self.change_wallpaper),
             ('Spegni Linux…', self.shutdown),
@@ -312,7 +400,14 @@ class Desktop:
             spawn(argv)
 
     def video(self, path=None):
-        path = path or filedialog.askopenfilename(parent=self.root, title='Scegli un video', initialdir='/root')
+        path = path or filedialog.askopenfilename(
+            parent=self.root,
+            title='Scegli audio o video',
+            initialdir='/srv/condivisa',
+            filetypes=[
+                ('Audio e video', '*.m4a *.mp3 *.wav *.mp4 *.mkv *.avi *.mov *.webm *.ts *.mpeg *.mpg'),
+                ('Tutti i file', '*'),
+            ])
         if not path:
             return
         # This is a host player: map the selected chroot filename to the USB.
@@ -349,7 +444,7 @@ class Desktop:
             if p is None: return
             if p.is_dir():
                 current.set(str(p)); refresh()
-            elif p.suffix.lower() in ('.mp4','.mkv','.avi','.mov','.webm','.mp3','.wav','.ts','.mpeg','.mpg'):
+            elif p.suffix.lower() in ('.mp4','.mkv','.avi','.mov','.webm','.mp3','.m4a','.wav','.ts','.mpeg','.mpg'):
                 self.video(str(p))
             else:
                 terminal('Modifica · '+p.name, ['chroot', ARCH, '/usr/bin/nano', str(p)])
