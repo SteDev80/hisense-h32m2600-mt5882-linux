@@ -1,0 +1,9 @@
+#!/bin/sh
+case "$1" in
+  start)
+    if [ -e /mnt/usb2/h32-scream/autostart ]; then
+      /usr/local/sbin/h32-scream-service start >/var/log/h32-scream-start.log 2>&1 &
+    fi
+    ;;
+  stop) /usr/local/sbin/h32-scream-service stop ;;
+esac

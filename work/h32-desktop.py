@@ -74,6 +74,7 @@ class Desktop:
         button(self.dock, 'Programmi', self.software).pack(side='left', padx=3)
         button(self.dock, 'Terminale', lambda: terminal('Arch Linux ARM', ['/usr/local/sbin/h32-arch-login'])).pack(side='left', padx=3)
         button(self.dock, 'Wi-Fi', self.wifi).pack(side='left', padx=3)
+        button(self.dock, 'Audio PC', self.scream_audio).pack(side='left', padx=3)
         button(self.dock, 'Desktop', lambda: spawn(host('fluxbox-remote', 'ShowDesktop'))).pack(side='left', padx=3)
         self.clock = tk.Label(self.dock, bg=PANEL, fg=TEXT, font=('DejaVu Sans', 10), padx=18)
         self.clock.pack(side='right')
@@ -164,6 +165,7 @@ class Desktop:
                     self.saved_volume = external
                     self.volume_value.set(external)
                     self.volume_changed(external)
+                    self.set_scream_volume(external)
             except (OSError, ValueError):
                 pass
         self.root.after(1000, self.tick)
@@ -184,6 +186,11 @@ class Desktop:
         temporary.replace(VOLUME_CONFIG)
         self.saved_volume = value
         self.set_running_player_volume(value)
+        self.set_scream_volume(value)
+
+    def set_scream_volume(self, value):
+        subprocess.run(host('/usr/local/sbin/h32-scream-service', 'volume', str(value)),
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     def set_running_player_volume(self, value):
         """Set an active FFplay window from a known muted baseline."""
@@ -324,13 +331,44 @@ class Desktop:
     def wifi(self):
         terminal('Stato Wi-Fi', ['/bin/sh', '-c', '/usr/local/sbin/h32-wifi-status; printf "\\nPremi Invio per chiudere"; read answer'])
 
+    def scream_audio(self):
+        win = self.window('Audio PC Wi-Fi', '760x350')
+        tk.Label(win, text='Audio dal PC alle casse Hisense', bg=BG, fg=TEXT,
+                 font=('DejaVu Sans', 20, 'bold')).pack(anchor='w')
+        tk.Label(win, text='In Windows seleziona il dispositivo audio Scream.\\n'
+                 'La TV riceve lo streaming sulla rete locale.', bg=BG, fg=MUTED,
+                 justify='left').pack(anchor='w', pady=(5, 14))
+        state = tk.StringVar(value='Controllo stato…')
+        tk.Label(win, textvariable=state, bg=CARD, fg=ACCENT, justify='left',
+                 anchor='w', padx=12, pady=10).pack(fill='x')
+
+        def control(action):
+            result = subprocess.run(host('/usr/local/sbin/h32-scream-service', action),
+                                    text=True, capture_output=True)
+            if result.returncode:
+                messagebox.showerror('Audio PC', (result.stderr or result.stdout).strip(), parent=win)
+            refresh()
+
+        def refresh():
+            result = subprocess.run(host('/usr/local/sbin/h32-scream-service', 'status'),
+                                    text=True, capture_output=True)
+            state.set((result.stdout or result.stderr or 'Stato non disponibile').strip())
+
+        controls = tk.Frame(win, bg=BG)
+        controls.pack(fill='x', pady=14)
+        button(controls, 'Avvia ricezione', lambda: control('start'), True).pack(side='left', padx=(0, 7))
+        button(controls, 'Ferma', lambda: control('stop')).pack(side='left', padx=7)
+        button(controls, 'Avvio automatico SÌ', lambda: control('autostart-on')).pack(side='left', padx=7)
+        button(controls, 'Avvio automatico NO', lambda: control('autostart-off')).pack(side='left', padx=7)
+        refresh()
+
     def menu(self):
         if self.popup is not None and self.popup.winfo_exists():
             self.popup.destroy()
             self.popup = None
             return
-        win = self.popup = self.window('Start', '335x490')
-        win.geometry(f'335x490+10+{max(0,self.h-558)}')
+        win = self.popup = self.window('Start', '365x620')
+        win.geometry(f'365x620+10+{max(0,self.h-688)}')
         tk.Label(win, text='H32 Linux', bg=BG, fg=TEXT, font=('DejaVu Sans', 20, 'bold')).pack(anchor='w', pady=(0,14))
         actions = [
             ('Programmi / installa applicazioni', self.software),
@@ -342,17 +380,25 @@ class Desktop:
             ('Link RuView per il PC',
              lambda: self.link_for_pc('RuView', f'http://{self.tv_ip()}:3000/ui/')),
             ('RuView · informazioni', self.ruview),
+            ('Audio PC Wi-Fi', self.scream_audio),
             ('Stato Wi-Fi', self.wifi),
             ('Cambia sfondo', self.change_wallpaper),
+            ('Riavvia Linux…', self.reboot),
             ('Spegni Linux…', self.shutdown),
         ]
         for label, fn in actions:
-            button(win, label, fn).pack(fill='x', pady=3)
+            item = button(win, label, fn)
+            item.configure(pady=5)
+            item.pack(fill='x', pady=2)
         win.bind('<Escape>', lambda e: win.destroy())
 
     def shutdown(self):
         if messagebox.askyesno('Spegni Linux', 'Arrestare Linux? Non estrarre la USB prima dell’arresto.', parent=self.root):
             spawn(host('/sbin/poweroff'))
+
+    def reboot(self):
+        if messagebox.askyesno('Riavvia Linux', 'Riavviare adesso il sistema Linux della TV?', parent=self.root):
+            spawn(host('/sbin/reboot'))
 
     def software(self):
         win = self.window('Programmi · Arch Linux ARM', '730x600')

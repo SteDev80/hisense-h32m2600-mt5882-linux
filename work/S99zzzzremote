@@ -1,0 +1,12 @@
+#!/bin/sh
+case "$1" in
+  start)
+    if ! chroot /mnt/usb2/archlinux/rootfs /usr/bin/pgrep -f '^/usr/bin/python3 /usr/local/sbin/h32-remote-api.py$' >/dev/null 2>&1; then
+      chroot /mnt/usb2/archlinux/rootfs /usr/bin/python3 /usr/local/sbin/h32-remote-api.py >>/var/log/h32-remote-api.log 2>&1 &
+    fi
+    ;;
+  stop)
+    chroot /mnt/usb2/archlinux/rootfs /usr/bin/pkill -f '^/usr/bin/python3 /usr/local/sbin/h32-remote-api.py$' 2>/dev/null || true
+    ;;
+  restart) "$0" stop; sleep 1; "$0" start ;;
+esac

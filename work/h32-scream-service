@@ -1,0 +1,86 @@
+#!/bin/sh
+set -eu
+base=/mnt/usb2/h32-scream
+arch=/mnt/usb2/archlinux/rootfs
+receiver=/usr/local/bin/h32-scream-receiver
+pidfile=/run/h32-scream.pid
+log=/var/log/h32-scream.log
+autostart=$base/autostart
+volume_file=$base/volume
+runtime_volume=$arch/run/h32-scream-volume
+
+running() {
+    [ -r "$pidfile" ] || return 1
+    pid=$(cat "$pidfile")
+    [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null
+}
+
+start_receiver() {
+    if running; then echo "running pid=$(cat "$pidfile")"; return 0; fi
+    rm -f "$pidfile"
+    if chroot "$arch" /usr/bin/pgrep -x ffplay >/dev/null 2>&1; then
+        echo "audio busy: close the TV media player first" >&2
+        return 2
+    fi
+    test -x "$arch$receiver"
+    mkdir -p "$base"
+    volume=10
+    [ -r "$volume_file" ] && volume=$(cat "$volume_file")
+    echo "$volume" > "$runtime_volume"
+    : > "$log"
+    chroot "$arch" /usr/bin/env HOME=/root "$receiver" \
+        -o alsa -d default -t 100 >>"$log" 2>&1 &
+    pid=$!
+    echo "$pid" > "$pidfile"
+    sleep 1
+    if ! kill -0 "$pid" 2>/dev/null; then
+        rm -f "$pidfile"
+        echo "receiver failed; see $log" >&2
+        return 1
+    fi
+    echo "running pid=$pid"
+}
+
+stop_receiver() {
+    if running; then
+        pid=$(cat "$pidfile")
+        kill "$pid" 2>/dev/null || true
+        i=0
+        while kill -0 "$pid" 2>/dev/null && [ "$i" -lt 20 ]; do
+            sleep 0.1
+            i=$((i + 1))
+        done
+        kill -9 "$pid" 2>/dev/null || true
+    fi
+    rm -f "$pidfile"
+    echo stopped
+}
+
+status_receiver() {
+    if running; then echo "receiver=running"; else rm -f "$pidfile"; echo "receiver=stopped"; fi
+    if [ -e "$autostart" ]; then echo "autostart=on"; else echo "autostart=off"; fi
+    echo "protocol=Scream multicast 239.255.77.77:4010"
+    echo "volume=$(cat "$runtime_volume" 2>/dev/null || echo 10)%"
+}
+
+set_volume() {
+    value=${2:-}
+    case "$value" in ''|*[!0-9]*) echo 'volume must be 0..100' >&2; return 2;; esac
+    [ "$value" -le 100 ] || { echo 'volume must be 0..100' >&2; return 2; }
+    mkdir -p "$base"
+    echo "$value" > "$volume_file"
+    echo "$value" > "$runtime_volume"
+    sync
+    echo "volume=$value%"
+}
+
+case "${1:-status}" in
+    start) start_receiver ;;
+    stop) stop_receiver ;;
+    restart) stop_receiver; start_receiver ;;
+    status) status_receiver ;;
+    autostart-on) mkdir -p "$base"; : > "$autostart"; sync; echo autostart=on ;;
+    autostart-off) rm -f "$autostart"; sync; echo autostart=off ;;
+    volume) set_volume "$@" ;;
+    *) echo "usage: $0 {start|stop|restart|status|autostart-on|autostart-off|volume 0..100}" >&2; exit 2 ;;
+esac

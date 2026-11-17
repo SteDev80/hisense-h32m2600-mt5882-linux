@@ -4,7 +4,7 @@ Linux su chiavetta USB con desktop remoto, applicazioni leggere, Wi-Fi,
 condivisione Windows e **audio dagli altoparlanti della TV**.
 Configurazione collaudata su una specifica H32M2600, non firmware universale.
 
-**Stato al 10 settembre 2026:** avvio automatico USB installato e verificato
+**Stato al 17 novembre 2026:** avvio automatico USB installato e verificato
 senza TTL. Con la chiavetta assente il bootloader torna al sistema Hisense.
 
 ![Desktop H32 con sfondo personalizzato](docs/screenshots/desktop.png)
@@ -30,8 +30,10 @@ senza TTL. Con la chiavetta assente il bootloader torna al sistema Hisense.
 | Desktop | Xvfb + Fluxbox + Python/Tk, VNC 1024×768 |
 | Applicazioni | Menu Start, catalogo con conferma, file manager |
 | Telecomando IR | Apprendimento sperimentale, visualizzazione codice e azioni X11 |
-| Playlist | Lettura M3U/M3U8/PLS tramite il lettore audio TV |
+| Playlist | Creazione, modifica e lettura M3U/M3U8/PLS dalla TV |
 | Audio | FFplay + SDL/ALSA isolati, altoparlanti TV, mono 48 kHz |
+| Audio PC | Endpoint VB-CABLE firmato, trasmettitore Windows e ricevitore Scream |
+| Visualizzatore | Pulsante grafico con FFT e sei effetti selezionabili |
 | Suono di avvio | Quattro note a sistema pronto, confermate all'ascolto |
 | Video | Riproduzione software provata; accelerazione GPU non verificata |
 | Wi-Fi | MT7603U con driver e componenti WPA recuperati dalla propria TV |
@@ -39,6 +41,7 @@ senza TTL. Con la chiavetta assente il bootloader torna al sistema Hisense.
 | Home Assistant | Core sperimentale; avvio separato dalla melodia |
 | Avvio senza TTL | Verificato: USB presente → Linux; USB assente → Hisense |
 | Data e ora | Europe/Rome, sincronizzazione Internet all'avvio e ogni ora |
+| Telecomando Android | Philips JointSpace e pannello Hisense H32 Linux con PIN |
 
 La melodia attende audio, desktop, LAN, VNC e SMB, non tutti i programmi.
 VNC non trasporta l'audio: il suono esce dalla TV. Un lettore audio per volta.
@@ -81,6 +84,7 @@ shell privilegiata: laboratorio, non piattaforma per impianti critici.
 
 - `buildroot/`, `buildroot-bootstrap/`: configurazioni e overlay.
 - `windows/H32BootSelector/`: sorgenti del selettore .NET 8 Windows.
+- `windows/HisenseH32Audio/`: trasmettitore audio Windows in modalità utente.
 - `work/`: integrazione, installer, esperimenti e note tecniche.
 - `assets/audio/ready.wav`: melodia originale, generatore in `work/`.
 - `assets/desktop/portrait.jpg`: sfondo fornito dall'utente.

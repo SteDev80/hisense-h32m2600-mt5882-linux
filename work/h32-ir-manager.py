@@ -381,16 +381,25 @@ class Manager:
         self.playlist_name = tk.StringVar(value="Nessuna playlist aperta")
         self.label(bar, "", 10).configure(textvariable=self.playlist_name)
         tk.Label(bar, textvariable=self.playlist_name, bg=BG, fg=TEXT, anchor="w").pack(side="left", fill="x", expand=True)
-        self.button(bar, "Apri playlist", self.open_playlist, True).pack(side="right")
+        self.button(bar, "Salva", self.save_playlist).pack(side="right", padx=(6, 0))
+        self.button(bar, "Apri", self.open_playlist).pack(side="right", padx=(6, 0))
+        self.button(bar, "Nuova", self.new_playlist, True).pack(side="right")
         self.track_list = tk.Listbox(self.playlist_tab, bg=CARD, fg=TEXT, selectbackground="#345474",
                                      font=("DejaVu Sans", 10), activestyle="none")
         self.track_list.pack(fill="both", expand=True, pady=10)
+        edit_controls = tk.Frame(self.playlist_tab, bg=BG)
+        edit_controls.pack(fill="x", pady=(0, 8))
+        self.button(edit_controls, "Aggiungi file", self.add_playlist_files, True).pack(side="left")
+        self.button(edit_controls, "Rimuovi", self.remove_playlist_item).pack(side="left", padx=6)
+        self.button(edit_controls, "Sposta su", lambda: self.move_playlist_item(-1)).pack(side="left")
+        self.button(edit_controls, "Sposta giù", lambda: self.move_playlist_item(1)).pack(side="left", padx=6)
         controls = tk.Frame(self.playlist_tab, bg=BG)
         controls.pack(fill="x")
         self.button(controls, "Riproduci selezionato", self.play_selected, True).pack(side="left")
         self.button(controls, "Riproduci tutto", self.play_all).pack(side="left", padx=6)
         self.button(controls, "Stop", self.stop_playlist).pack(side="left")
         self.playlist = []
+        self.playlist_path = None
         self.player = None
         self.stop_event = threading.Event()
         self.track_list.bind("<Double-Button-1>", lambda _event: self.play_selected())
@@ -406,10 +415,73 @@ class Manager:
         except OSError as exc:
             messagebox.showerror("Playlist", str(exc), parent=self.root)
             return
-        self.playlist_name.set(f"{Path(path).name} · {len(self.playlist)} elementi")
+        self.playlist_path = Path(path)
+        self.refresh_playlist_list()
+
+    def new_playlist(self):
+        self.stop_playlist()
+        self.playlist = []
+        self.playlist_path = None
+        self.refresh_playlist_list()
+
+    def refresh_playlist_list(self, selected=None):
+        name = self.playlist_path.name if self.playlist_path else "Nuova playlist"
+        self.playlist_name.set(f"{name} · {len(self.playlist)} elementi")
         self.track_list.delete(0, "end")
         for item in self.playlist:
             self.track_list.insert("end", Path(item).name if "://" not in item else item)
+        if selected is not None and self.playlist:
+            selected = max(0, min(selected, len(self.playlist) - 1))
+            self.track_list.selection_set(selected)
+            self.track_list.see(selected)
+
+    def add_playlist_files(self):
+        paths = filedialog.askopenfilenames(
+            parent=self.root, title="Aggiungi audio o video", initialdir="/srv/condivisa",
+            filetypes=[("Audio e video", "*.mp3 *.m4a *.aac *.wav *.flac *.ogg *.mp4 *.mkv *.avi *.mov *.webm"),
+                       ("Tutti i file", "*")])
+        if not paths:
+            return
+        first = len(self.playlist)
+        self.playlist.extend(paths)
+        self.refresh_playlist_list(first)
+
+    def remove_playlist_item(self):
+        choice = self.track_list.curselection()
+        if not choice:
+            return
+        index = choice[0]
+        del self.playlist[index]
+        self.refresh_playlist_list(index)
+
+    def move_playlist_item(self, direction):
+        choice = self.track_list.curselection()
+        if not choice:
+            return
+        source = choice[0]
+        target = source + direction
+        if target < 0 or target >= len(self.playlist):
+            return
+        self.playlist[source], self.playlist[target] = self.playlist[target], self.playlist[source]
+        self.refresh_playlist_list(target)
+
+    def save_playlist(self):
+        path = self.playlist_path
+        if path is None or path.suffix.lower() not in (".m3u", ".m3u8"):
+            selected = filedialog.asksaveasfilename(
+                parent=self.root, title="Salva playlist", initialdir="/srv/condivisa",
+                defaultextension=".m3u", filetypes=[("Playlist M3U", "*.m3u"), ("Playlist M3U8", "*.m3u8")])
+            if not selected:
+                return
+            path = Path(selected)
+        try:
+            path.write_text("#EXTM3U\n" + "\n".join(self.playlist) + "\n", encoding="utf-8")
+        except OSError as exc:
+            messagebox.showerror("Salva playlist", str(exc), parent=self.root)
+            return
+        self.playlist_path = path
+        self.refresh_playlist_list()
+        messagebox.showinfo("Playlist", f"Salvata: {path.name}", parent=self.root)
 
     def host_media_command(self, item):
         target = item if "://" in item else ARCH + item

@@ -3,14 +3,22 @@
 case "$1" in
   start)
     mkdir -p /run/vnc /root/.fluxbox
-    if [ -r /etc/default/h32-vnc ]; then
-      . /etc/default/h32-vnc
+    persistent=/mnt/usb2/h32-vnc/passwd
+    if [ -r "$persistent" ]; then
+      cp "$persistent" /run/vnc/passwd
+    else
+      if [ -r /etc/default/h32-vnc ]; then
+        . /etc/default/h32-vnc
+      fi
+      if [ -z "${VNC_PASSWORD:-}" ]; then
+        VNC_PASSWORD="$(dd if=/dev/urandom bs=32 count=1 2>/dev/null | base64 | tr -dc 'A-Za-z0-9' | cut -c1-8)"
+      fi
+      x11vnc -storepasswd "$VNC_PASSWORD" /run/vnc/passwd >/dev/null
+      mkdir -p "${persistent%/*}"
+      cp /run/vnc/passwd "$persistent"
+      chmod 600 "$persistent"
     fi
-    if [ -z "${VNC_PASSWORD:-}" ]; then
-      VNC_PASSWORD="$(dd if=/dev/urandom bs=32 count=1 2>/dev/null | base64 | tr -dc 'A-Za-z0-9' | cut -c1-8)"
-    fi
-    x11vnc -storepasswd "$VNC_PASSWORD" /run/vnc/passwd >/dev/null
-    echo "VNC password for this boot: $VNC_PASSWORD"
+    chmod 600 /run/vnc/passwd
 
     Xvfb :0 -screen 0 1024x768x16 -nolisten tcp -noreset \
       >/var/log/Xvfb.log 2>&1 &
