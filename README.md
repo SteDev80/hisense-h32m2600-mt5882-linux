@@ -17,6 +17,9 @@ senza TTL. Con la chiavetta assente il bootloader torna al sistema Hisense.
 - [Condivisione Windows](work/README-samba-usb.md)
 - [Desktop e programmi](work/README-h32-desktop.md)
 - [Telecomando IR e playlist](work/README-ir-playlist.md)
+- **[App Android Telecomando TV v1.4](https://github.com/SteDev80/PhilipsLegacyRemote/releases/latest)**
+  — Philips JointSpace e pannello Hisense H32 Linux
+- [Sorgenti dell'app Android](https://github.com/SteDev80/PhilipsLegacyRemote)
 - [Bootstrap e driver recuperati](work/README-usb-vendor-v1.md)
 - [Avvio automatico USB e recupero](work/README-autoboot-usb.md)
 - [Collaudo del contenitore multi-image](work/README-usb-multi-test.md)
