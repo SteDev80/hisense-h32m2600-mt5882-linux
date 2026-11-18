@@ -48,8 +48,7 @@ display = x11.XOpenDisplay(os.environ["DISPLAY"].encode())
 if not display:
     raise SystemExit(0)
 
-modes = ["FFT originale", "Colori caldi", "Negativo", "Specchio",
-         "Ribaltato", "Contrasto forte"]
+modes = ["Spettro FFT", "Forma d'onda", "Video / copertina"]
 mode = 0
 root = tk.Tk()
 root.title("Grafica audio")

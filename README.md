@@ -33,7 +33,7 @@ senza TTL. Con la chiavetta assente il bootloader torna al sistema Hisense.
 | Playlist | Creazione, modifica e lettura M3U/M3U8/PLS dalla TV |
 | Audio | FFplay + SDL/ALSA isolati, altoparlanti TV, mono 48 kHz |
 | Audio PC | Endpoint VB-CABLE firmato, trasmettitore Windows e ricevitore Scream |
-| Visualizzatore | Pulsante grafico con FFT e sei effetti selezionabili |
+| Visualizzatore | Pulsante grafico con FFT, forma d'onda e modalità video/copertina |
 | Suono di avvio | Quattro note a sistema pronto, confermate all'ascolto |
 | Video | Riproduzione software provata; accelerazione GPU non verificata |
 | Wi-Fi | MT7603U con driver e componenti WPA recuperati dalla propria TV |

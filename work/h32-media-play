@@ -28,12 +28,6 @@ case "${last##*.}" in
             /usr/bin/python3 /usr/local/bin/h32-visualizer-click.py >/dev/null 2>&1 &
         click_pid=$!
         /usr/bin/ffplay -nostats -loglevel warning -autoexit -showmode 2 \
-            -vf "null" \
-            -vf "hue=h=45:s=1.6" \
-            -vf "negate" \
-            -vf "hflip" \
-            -vf "vflip" \
-            -vf "eq=contrast=1.8:saturation=1.4" \
             -volume "$volume" -x 800 -y 450 "$@"
         result=$?
         kill "$click_pid" 2>/dev/null || true
