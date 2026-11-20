@@ -25,9 +25,25 @@ SHA-256 `16991ef3f4026398a8b3a12bbda1967c892905ac3ecebb7d111c6bcbedfb0fba`.
 La modifica cambia esclusivamente `channels_max` da 1 a 2 nella struttura
 `snd_pcm_hardware`; `vermagic`, codice DSP e simboli restano invariati.
 
-Conservare sempre `snd-mtk.ko.original-mono`. Aggiornare l'hash controllato da
-`h32-audio-start` solo dopo una prova a caldo riuscita. Non usare questo modulo
-su altri modelli o kernel.
+Conservare sempre `snd-mtk.ko` come modulo mono originale. Installare la copia
+modificata con il nome separato `snd-mtk-stereo.ko`: non sostituire mai il file
+caricato durante il boot e non usare il modulo su altri modelli o kernel.
+
+`S99zzaudio` carica sempre il driver mono verificato. `S99zzstereo` aspetta 30
+secondi, quando boot e desktop sono gia conclusi, e richiama
+`h32-audio-stereo-switch`. Lo switch ferma temporaneamente il ricevitore,
+rimuove solo `snd_mtk`, carica la copia stereo e applica la configurazione ALSA.
+Se il caricamento fallisce tenta immediatamente il ritorno al mono. Un riavvio
+riparte sempre dal percorso mono noto e funzionante.
+
+Per escludere lo switch automatico creare `/mnt/usb2/H32-STEREO-DISABLED`.
+Comandi manuali:
+
+```sh
+h32-audio-stereo-switch status
+h32-audio-stereo-switch start
+h32-audio-stereo-switch mono
+```
 
 ## Equalizzatore
 
@@ -50,6 +66,5 @@ Il pannello si apre da **Start -> Audio PC Wi-Fi -> Equalizzatore**.
 
 ## Ripristino
 
-Fermare il ricevitore, ripristinare il modulo originale e l'hash originale in
-`h32-audio-start`, quindi riavviare. Non occorre scrivere sull'eMMC: tutti i
-file del progetto restano sulla chiavetta USB.
+Eseguire `h32-audio-stereo-switch mono` oppure riavviare. Non occorre scrivere
+sull'eMMC: tutti i file del progetto restano sulla chiavetta USB.

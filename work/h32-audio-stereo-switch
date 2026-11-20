@@ -1,0 +1,75 @@
+#!/bin/sh
+# Boot with the original mono driver; switch to stereo only after userspace is ready.
+set -eu
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+moddir=/opt/h32-vendor/modules/basic/modules
+mono=$moddir/snd-mtk.ko
+stereo=$moddir/snd-mtk-stereo.ko
+arch=/mnt/usb2/archlinux/rootfs
+config=$arch/etc/asound.conf
+stereo_config=/opt/h32-audio/asound-hw-stereo.conf
+mono_config=$arch/etc/asound.conf.mono-backup
+state=/run/h32-audio-mode
+receiver_was_running=0
+mono_hash=fc93bbed1bea9bea5f6e5ed83de279c431d87c119005309b0dbb6d3c5a2be044
+stereo_hash=16991ef3f4026398a8b3a12bbda1967c892905ac3ecebb7d111c6bcbedfb0fba
+
+verify() { echo "$1  $2" | sha256sum -c - >/dev/null; }
+loaded() { grep -q '^snd_mtk ' /proc/modules; }
+stop_receiver() {
+    if /usr/local/sbin/h32-scream-service status 2>/dev/null | grep -q 'receiver=running'; then
+        receiver_was_running=1
+        /usr/local/sbin/h32-scream-service stop >/dev/null 2>&1 || true
+    fi
+}
+start_receiver() {
+    if [ "$receiver_was_running" = 1 ] || [ -e /mnt/usb2/h32-scream/autostart ]; then
+        /usr/local/sbin/h32-scream-service start >/dev/null 2>&1 || true
+    fi
+}
+restore_mono() {
+    loaded && rmmod snd_mtk 2>/dev/null || true
+    verify "$mono_hash" "$mono"
+    insmod "$mono"
+    [ -f "$mono_config" ] && cp "$mono_config" "$config"
+    sleep 2
+    grep -q mtk /proc/asound/cards
+    echo mono > "$state"
+    start_receiver
+}
+
+case "${1:-status}" in
+    start)
+        [ ! -e /mnt/usb2/H32-STEREO-DISABLED ] || { echo mono > "$state"; exit 0; }
+        test "$(uname -r)" = 3.10.27
+        awk '$1=="/dev/sda2" && $2=="/" {ok=1} END{exit !ok}' /proc/mounts
+        verify "$mono_hash" "$mono"
+        verify "$stereo_hash" "$stereo"
+        test -f "$stereo_config"
+        stop_receiver
+        if loaded; then rmmod snd_mtk; fi
+        if insmod "$stereo" && sleep 2 && grep -q mtk /proc/asound/cards; then
+            [ -f "$mono_config" ] || cp "$config" "$mono_config"
+            cp "$stereo_config" "$config"
+            echo stereo > "$state"
+            start_receiver
+            echo H32_STEREO_READY
+        else
+            echo 'Stereo failed; restoring mono' >&2
+            restore_mono
+            exit 1
+        fi
+        ;;
+    mono)
+        stop_receiver
+        restore_mono
+        echo H32_MONO_READY
+        ;;
+    status)
+        mode=$(cat "$state" 2>/dev/null || echo mono)
+        echo "mode=$mode"
+        sha256sum "$mono" "$stereo" 2>/dev/null || true
+        cat /proc/asound/cards
+        ;;
+    *) echo "usage: $0 {start|mono|status}" >&2; exit 2 ;;
+esac

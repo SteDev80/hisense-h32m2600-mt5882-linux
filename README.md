@@ -35,7 +35,7 @@ senza TTL. Con la chiavetta assente il bootloader torna al sistema Hisense.
 | Applicazioni | Menu Start, catalogo con conferma, file manager |
 | Telecomando IR | Apprendimento sperimentale, visualizzazione codice e azioni X11 |
 | Playlist | Creazione, modifica e lettura M3U/M3U8/PLS dalla TV |
-| Audio | Driver vendor 3.10.27 corretto, stereo PCM 48 kHz/16 bit verificato |
+| Audio | Boot mono sicuro; switch stereo ritardato PCM 48 kHz/16 bit verificato |
 | Audio PC | Scream stereo, EQ 10 bande per canale, livelli L/R e master |
 | Visualizzatore | Pulsante grafico con FFT, forma d'onda e modalità video/copertina |
 | Suono di avvio | Quattro note a sistema pronto, confermate all'ascolto |

@@ -1,0 +1,10 @@
+#!/bin/sh
+# Run after normal mono audio and never hold up system boot.
+case "$1" in
+ start)
+   ( sleep 30; /usr/local/sbin/h32-audio-stereo-switch start ) \
+     >/var/log/h32-stereo-switch.log 2>&1 &
+   ;;
+ stop) : ;;
+esac
+exit 0

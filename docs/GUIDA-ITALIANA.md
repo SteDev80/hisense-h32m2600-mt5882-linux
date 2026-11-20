@@ -100,6 +100,11 @@ Lo stereo richiede il modulo MT5882 verificato descritto in
 `work/README-audio-stereo-eq.md`. Non installare il modulo su kernel o modelli
 diversi e conservare sempre la copia mono originale per il ripristino.
 
+La variante sicura usa il driver mono originale a ogni boot e passa alla copia
+stereo separata solo 30 secondi dopo il completamento dell'avvio. Un riavvio
+torna sempre al mono; per disabilitare lo switch creare
+`/mnt/usb2/H32-STEREO-DISABLED`.
+
 ## Condivisione Windows 11
 
 In Esplora file apri `\\192.168.1.54\Condivisa`, adattando l'IP.
