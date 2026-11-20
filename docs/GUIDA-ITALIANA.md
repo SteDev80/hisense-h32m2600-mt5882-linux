@@ -88,6 +88,18 @@ e li riproduce con l'uscita audio della TV. Un esempio è
 Il volume scelto viene memorizzato in `/root/.config/h32-volume` sulla USB ed è
 condiviso con il cursore accanto all'orologio.
 
+## Audio stereo ed equalizzatore
+
+Apri **Start → Audio PC Wi-Fi → Equalizzatore**. Sono disponibili dieci bande
+indipendenti per ciascuna cassa, livello di uscita sinistro e destro e un master
+comune. **Applica manuale** salva la curva sulla USB e riavvia soltanto il
+ricevitore audio. I preset Piatto, Bassi, Musica, Voce e Notte regolano entrambi
+i canali; i pulsanti S→D e D→S copiano una curva da un lato all'altro.
+
+Lo stereo richiede il modulo MT5882 verificato descritto in
+`work/README-audio-stereo-eq.md`. Non installare il modulo su kernel o modelli
+diversi e conservare sempre la copia mono originale per il ripristino.
+
 ## Condivisione Windows 11
 
 In Esplora file apri `\\192.168.1.54\Condivisa`, adattando l'IP.

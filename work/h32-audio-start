@@ -12,7 +12,7 @@ for d in /dev/mmcblk0 /dev/mmcblk0p* /dev/mmcblk0boot*; do
 done
 mod=/opt/h32-vendor/modules/basic
 echo "814844b34e2957b2668cb5e6232674f14f7c12782dac7fbeb4db839ae9bb3266  $mod/dtv_driver.ko" | sha256sum -c -
-echo "fc93bbed1bea9bea5f6e5ed83de279c431d87c119005309b0dbb6d3c5a2be044  $mod/modules/snd-mtk.ko" | sha256sum -c -
+echo "16991ef3f4026398a8b3a12bbda1967c892905ac3ecebb7d111c6bcbedfb0fba  $mod/modules/snd-mtk.ko" | sha256sum -c -
 if ! grep -q '^mtk_mod ' /proc/modules; then
     insmod "$mod/dtv_driver.ko" panel_early_init=-1
 fi

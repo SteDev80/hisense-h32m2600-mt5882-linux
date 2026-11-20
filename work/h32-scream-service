@@ -29,7 +29,7 @@ start_receiver() {
     echo "$volume" > "$runtime_volume"
     : > "$log"
     chroot "$arch" /usr/bin/env HOME=/root "$receiver" \
-        -o alsa -d default -t 100 >>"$log" 2>&1 &
+        -o alsa -d default -t 300 -v >>"$log" 2>&1 &
     pid=$!
     echo "$pid" > "$pidfile"
     sleep 1

@@ -1,0 +1,85 @@
+#!/bin/sh
+set -eu
+arch=/mnt/usb2/archlinux/rootfs
+state=/mnt/usb2/h32-scream/equalizer
+config=$arch/etc/asound.conf
+
+write_config() {
+    values=$1
+    cat > "$config.new" <<EOF
+# Hisense MT5882 native stereo driver with independent dual EQ and master.
+pcm.h32_stereo_plug {
+    type plug
+    slave { pcm "hw:0,0" channels 2 rate 48000 format S16_LE }
+}
+pcm.h32_equalizer {
+    type ladspa
+    slave.pcm "h32_stereo_plug"
+    path "/usr/lib/ladspa"
+    plugins [ {
+        label H32DualEq
+        policy none
+        input {
+            bindings { 0 "Left input" 1 "Right input" }
+            controls [ $values ]
+        }
+        output { bindings { 0 "Left output" 1 "Right output" } }
+    } ]
+}
+pcm.!default {
+    type plug
+    slave.pcm "h32_equalizer"
+}
+ctl.!default { type hw card 0 }
+EOF
+    chmod 644 "$config.new"
+    mv "$config.new" "$config"
+}
+
+preset=${1:-status}
+case "$preset" in
+    flat)   one="0 0 0 0 0 0 0 0 0 0"; values="$one $one 0 0 0" ;;
+    bass)   one="3 4 4 2 0 0 0 0 0 0"; values="$one $one 0 0 0" ;;
+    music)  one="2 3 2 0 -1 0 1 2 3 2"; values="$one $one 0 0 0" ;;
+    voice)  one="-3 -2 -1 0 2 4 4 2 0 -1"; values="$one $one 0 0 0" ;;
+    night)  one="-5 -4 -2 0 2 3 2 0 -2 -3"; values="$one $one -8 -8 -4" ;;
+    custom)
+        shift
+        [ "$#" -eq 23 ] || { echo "servono 20 bande, 2 livelli e master" >&2; exit 2; }
+        values=""
+        index=0
+        for value in "$@"; do
+            index=$((index + 1))
+            if [ "$index" -le 20 ]; then
+                case "$value" in -[0-9]|-1[0-2]|[0-9]|1[0-2]) ;; *) echo "banda non valida: $value" >&2; exit 2;; esac
+            else
+                case "$value" in -[0-9]|-[1-5][0-9]|-60|[0-6]) ;; *) echo "livello non valido: $value" >&2; exit 2;; esac
+            fi
+            values="$values $value"
+        done
+        values=${values# }
+        ;;
+    status)
+        if [ -r "$state" ]; then
+            set -- $(cat "$state")
+            if [ "$#" -eq 11 ]; then shift; echo "legacy $* $* 0 0 0"
+            elif [ "$#" -eq 21 ]; then profile=$1; shift; echo "$profile $* 0 0 0"
+            elif [ "$#" -eq 23 ]; then profile=$1; shift; echo "$profile $* 0"
+            else cat "$state"; fi
+        else echo "flat 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"; fi
+        exit 0
+        ;;
+    *) echo "uso: $0 {flat|bass|music|voice|night|custom v1 ... v10|status}" >&2; exit 2 ;;
+esac
+
+mkdir -p "${state%/*}"
+write_config "$values"
+printf '%s %s\n' "$preset" "$values" > "$state"
+sync
+if ! /usr/local/sbin/h32-scream-service restart >/dev/null; then
+    cp "$config.native-stereo-backup" "$config" 2>/dev/null || true
+    /usr/local/sbin/h32-scream-service start >/dev/null 2>&1 || true
+    echo "equalizzatore non avviato; configurazione precedente ripristinata" >&2
+    exit 1
+fi
+echo "$preset $values"

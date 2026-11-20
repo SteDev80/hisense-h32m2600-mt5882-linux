@@ -4,7 +4,7 @@ Linux su chiavetta USB con desktop remoto, applicazioni leggere, Wi-Fi,
 condivisione Windows e **audio dagli altoparlanti della TV**.
 Configurazione collaudata su una specifica H32M2600, non firmware universale.
 
-**Stato al 17 novembre 2026:** avvio automatico USB installato e verificato
+**Stato al 20 novembre 2026:** avvio automatico USB installato e verificato
 senza TTL. Con la chiavetta assente il bootloader torna al sistema Hisense.
 
 ![Desktop H32 con sfondo personalizzato](docs/screenshots/desktop.png)
@@ -13,6 +13,7 @@ senza TTL. Con la chiavetta assente il bootloader torna al sistema Hisense.
 
 - **[Guida d'uso e preparazione](docs/GUIDA-ITALIANA.md)**
 - [Audio permanente](work/README-audio-permanente-usb.md)
+- [Driver stereo ed equalizzatore duale](work/README-audio-stereo-eq.md)
 - [Suono di sistema pronto](work/README-ready-sound.md)
 - [Condivisione Windows](work/README-samba-usb.md)
 - [Desktop e programmi](work/README-h32-desktop.md)
@@ -34,8 +35,8 @@ senza TTL. Con la chiavetta assente il bootloader torna al sistema Hisense.
 | Applicazioni | Menu Start, catalogo con conferma, file manager |
 | Telecomando IR | Apprendimento sperimentale, visualizzazione codice e azioni X11 |
 | Playlist | Creazione, modifica e lettura M3U/M3U8/PLS dalla TV |
-| Audio | FFplay + SDL/ALSA isolati, altoparlanti TV, mono 48 kHz |
-| Audio PC | Endpoint VB-CABLE firmato, trasmettitore Windows e ricevitore Scream |
+| Audio | Driver vendor 3.10.27 corretto, stereo PCM 48 kHz/16 bit verificato |
+| Audio PC | Scream stereo, EQ 10 bande per canale, livelli L/R e master |
 | Visualizzatore | Pulsante grafico con FFT, forma d'onda e modalità video/copertina |
 | Suono di avvio | Quattro note a sistema pronto, confermate all'ascolto |
 | Video | Riproduzione software provata; accelerazione GPU non verificata |

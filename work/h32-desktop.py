@@ -358,9 +358,91 @@ class Desktop:
         controls.pack(fill='x', pady=14)
         button(controls, 'Avvia ricezione', lambda: control('start'), True).pack(side='left', padx=(0, 7))
         button(controls, 'Ferma', lambda: control('stop')).pack(side='left', padx=7)
+        button(controls, 'Equalizzatore', self.audio_equalizer).pack(side='left', padx=7)
         button(controls, 'Avvio automatico SÌ', lambda: control('autostart-on')).pack(side='left', padx=7)
         button(controls, 'Avvio automatico NO', lambda: control('autostart-off')).pack(side='left', padx=7)
         refresh()
+
+    def audio_equalizer(self):
+        win = self.window('Equalizzatore audio', '940x690')
+        tk.Label(win, text='Equalizzatore stereo · casse separate', bg=BG, fg=TEXT,
+                 font=('DejaVu Sans', 20, 'bold')).pack(anchor='w')
+        tk.Label(win, text='Le regolazioni si applicano allo streaming audio del PC.',
+                 bg=BG, fg=MUTED).pack(anchor='w', pady=(3, 10))
+        frequencies = ('31', '63', '125', '250', '500', '1k', '2k', '4k', '8k', '16k')
+        left_values = [tk.IntVar(value=0) for _ in frequencies]
+        right_values = [tk.IntVar(value=0) for _ in frequencies]
+        left_level = tk.IntVar(value=0)
+        right_level = tk.IntVar(value=0)
+        master_level = tk.IntVar(value=0)
+        values = left_values + right_values + [left_level, right_level, master_level]
+        status = tk.StringVar(value='')
+
+        def read_state():
+            result = subprocess.run(host('/usr/local/sbin/h32-equalizer', 'status'),
+                                    text=True, capture_output=True)
+            parts = result.stdout.strip().split()
+            if len(parts) >= 24:
+                for var, raw in zip(values, parts[-23:]):
+                    try: var.set(int(raw))
+                    except ValueError: pass
+                status.set('Profilo attuale: ' + parts[0])
+
+        def run_eq(args):
+            status.set('Applicazione in corso…')
+            win.update_idletasks()
+            result = subprocess.run(host('/usr/local/sbin/h32-equalizer', *args),
+                                    text=True, capture_output=True)
+            if result.returncode:
+                messagebox.showerror('Equalizzatore',
+                                     (result.stderr or result.stdout).strip(), parent=win)
+            read_state()
+
+        bands = tk.Frame(win, bg=BG)
+        bands.pack(fill='both', expand=True, pady=8)
+        for row, (speaker, speaker_values, level_var) in enumerate((
+                ('Cassa sinistra', left_values, left_level),
+                ('Cassa destra', right_values, right_level))):
+            group = tk.LabelFrame(bands, text=speaker, bg=CARD, fg=ACCENT,
+                                  font=('DejaVu Sans', 11, 'bold'), padx=5, pady=4)
+            group.grid(row=row, column=0, pady=4, sticky='ew')
+            for column, (freq, var) in enumerate(zip(frequencies, speaker_values)):
+                cell = tk.Frame(group, bg=CARD)
+                cell.grid(row=0, column=column, padx=6, sticky='ns')
+                tk.Label(cell, text=freq, bg=CARD, fg=TEXT).pack()
+                tk.Scale(cell, from_=12, to=-12, variable=var, resolution=1,
+                         length=175, orient='vertical', bg=CARD, fg=TEXT,
+                         troughcolor='#263341', highlightthickness=0).pack()
+            level_cell = tk.Frame(group, bg='#17212b')
+            level_cell.grid(row=0, column=10, padx=(12, 4), sticky='ns')
+            tk.Label(level_cell, text='USCITA', bg='#17212b', fg=ACCENT,
+                     font=('DejaVu Sans', 9, 'bold')).pack()
+            tk.Scale(level_cell, from_=6, to=-60, variable=level_var, resolution=1,
+                     length=175, orient='vertical', bg='#17212b', fg=TEXT,
+                     troughcolor='#40556b', highlightthickness=0).pack()
+        presets = tk.Frame(win, bg=BG)
+        presets.pack(fill='x', pady=5)
+        master_box = tk.Frame(win, bg=CARD)
+        master_box.pack(fill='x', pady=(0, 5))
+        tk.Label(master_box, text='MASTER', bg=CARD, fg=ACCENT,
+                 font=('DejaVu Sans', 10, 'bold')).pack(side='left', padx=8)
+        tk.Scale(master_box, from_=-60, to=6, variable=master_level, resolution=1,
+                 orient='horizontal', length=500, bg=CARD, fg=TEXT,
+                 troughcolor='#40556b', highlightthickness=0).pack(side='left', fill='x', expand=True)
+        for label, preset in (('Piatto', 'flat'), ('Bassi', 'bass'),
+                              ('Musica', 'music'), ('Voce', 'voice'),
+                              ('Notte', 'night')):
+            button(presets, label, lambda p=preset: run_eq([p])).pack(side='left', padx=4)
+        def copy_left_to_right():
+            for source, target in zip(left_values, right_values): target.set(source.get())
+        def copy_right_to_left():
+            for source, target in zip(right_values, left_values): target.set(source.get())
+        button(presets, 'S→D', copy_left_to_right).pack(side='left', padx=4)
+        button(presets, 'D→S', copy_right_to_left).pack(side='left', padx=4)
+        button(presets, 'Applica manuale',
+               lambda: run_eq(['custom'] + [str(v.get()) for v in values]), True).pack(side='right')
+        tk.Label(win, textvariable=status, bg=BG, fg=ACCENT).pack(anchor='w')
+        read_state()
 
     def menu(self):
         if self.popup is not None and self.popup.winfo_exists():
