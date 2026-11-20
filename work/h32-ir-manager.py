@@ -402,6 +402,7 @@ class Manager:
         self.playlist_path = None
         self.player = None
         self.stop_event = threading.Event()
+        self.playback_lock = threading.Lock()
         self.track_list.bind("<Double-Button-1>", lambda _event: self.play_selected())
 
     def open_playlist(self):
@@ -485,7 +486,29 @@ class Manager:
 
     def host_media_command(self, item):
         target = item if "://" in item else ARCH + item
-        return ["chroot", str(HOST), "/usr/local/bin/h32-media-play", "-i", target]
+        return ["chroot", str(HOST), "/usr/bin/env", "H32_STREAM_MANAGED=1",
+                "/usr/local/bin/h32-media-play", "-i", target]
+
+    def stream_running(self):
+        result = subprocess.run(
+            ["chroot", str(HOST), "/usr/local/sbin/h32-scream-service", "status"],
+            text=True, capture_output=True, check=False)
+        return "receiver=running" in result.stdout
+
+    def run_without_stream(self, callback):
+        with self.playback_lock:
+            resume = self.stream_running()
+            if resume:
+                subprocess.run(["chroot", str(HOST),
+                                "/usr/local/sbin/h32-scream-service", "stop"],
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            try:
+                callback()
+            finally:
+                if resume:
+                    subprocess.run(["chroot", str(HOST),
+                                    "/usr/local/sbin/h32-scream-service", "start"],
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     def play_item(self, item):
         self.player = subprocess.Popen(self.host_media_command(item), start_new_session=True)
@@ -496,7 +519,9 @@ class Manager:
         if not choice:
             return
         self.stop_playlist()
-        threading.Thread(target=self.play_item, args=(self.playlist[choice[0]],), daemon=True).start()
+        item = self.playlist[choice[0]]
+        threading.Thread(target=lambda: self.run_without_stream(lambda: self.play_item(item)),
+                         daemon=True).start()
 
     def play_all(self):
         if not self.playlist:
@@ -504,14 +529,14 @@ class Manager:
         self.stop_playlist()
         self.stop_event.clear()
         start = self.track_list.curselection()[0] if self.track_list.curselection() else 0
-        def worker():
+        def play_sequence():
             for index in range(start, len(self.playlist)):
                 if self.stop_event.is_set():
                     break
                 self.root.after(0, lambda i=index: self.track_list.selection_clear(0, "end"))
                 self.root.after(0, lambda i=index: self.track_list.selection_set(i))
                 self.play_item(self.playlist[index])
-        threading.Thread(target=worker, daemon=True).start()
+        threading.Thread(target=lambda: self.run_without_stream(play_sequence), daemon=True).start()
 
     def stop_playlist(self):
         self.stop_event.set()

@@ -7,6 +7,18 @@ export SDL_AUDIODRIVER=alsa
 export SDL_AUDIO_ALSA_DEFAULT_DEVICE=default
 export SDL_RENDER_DRIVER=software
 export DISPLAY=${DISPLAY:-:0}
+stream_was_running=0
+resume_stream() {
+    if [ "$stream_was_running" = 1 ]; then
+        /usr/local/sbin/h32-scream-service start >/dev/null 2>&1 || true
+    fi
+}
+if [ "${H32_STREAM_MANAGED:-0}" != 1 ] &&
+   /usr/local/sbin/h32-scream-service status 2>/dev/null | grep -q 'receiver=running'; then
+    stream_was_running=1
+    /usr/local/sbin/h32-scream-service stop >/dev/null 2>&1 || true
+    trap resume_stream EXIT HUP INT TERM
+fi
 if ! grep -q mtk /proc/asound/cards; then
     echo 'Audio TV non disponibile. Controllare /var/log/h32-audio.log.' >&2
     exit 1
@@ -33,5 +45,5 @@ case "${last##*.}" in
         kill "$click_pid" 2>/dev/null || true
         exit "$result"
         ;;
-    *) exec /usr/bin/ffplay -nostats -loglevel warning -autoexit -volume "$volume" -x 800 -y 450 "$@" ;;
+    *) /usr/bin/ffplay -nostats -loglevel warning -autoexit -volume "$volume" -x 800 -y 450 "$@" ;;
 esac

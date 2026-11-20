@@ -88,6 +88,11 @@ e li riproduce con l'uscita audio della TV. Un esempio è
 Il volume scelto viene memorizzato in `/root/.config/h32-volume` sulla USB ed è
 condiviso con il cursore accanto all'orologio.
 
+Durante la riproduzione locale il ricevitore audio Scream viene sospeso per
+evitare contese e disturbi sul vecchio dispositivo ALSA. Con **Riproduci tutto**
+resta fermo tra un brano e l'altro e viene riattivato soltanto alla fine della
+playlist o dopo **Stop**.
+
 ## Audio stereo ed equalizzatore
 
 Apri **Start → Audio PC Wi-Fi → Equalizzatore**. Sono disponibili dieci bande
